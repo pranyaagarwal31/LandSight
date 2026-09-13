@@ -3,7 +3,15 @@ export type ProjectType = 'Highway' | 'Railway' | 'Irrigation' | 'Power' | 'Indu
 export type Role = 'Admin' | 'State/District Officer' | 'Project Manager'
 export interface User { id: string; name: string; role: Role; mode: 'role-preview' }
 export interface RiskFactor { id: string; name: string; contribution: number; description: string }
-export interface RiskPrediction { score: number; level: RiskLevel; delayDays: number; confidence: number; factors: RiskFactor[]; model: string; isDemo: true }
+export interface RiskPrediction {
+  score: number; level: RiskLevel; delayDays: number; confidence: number | null; factors: RiskFactor[]; model: string; isDemo: true
+  metadata?: { status: 'trained' | 'demo'; algorithm: string; version: string; explanationMethod: string; notice: string; trainedAt?: string | null; featureSchemaVersion?: string }
+  probability?: { value: number; calibrated: false; notice: string }
+  riskCategory?: string
+  featureValues?: Record<string, number | string | null>
+  transformedFeatureValues?: Record<string, number>
+  fallbackReason?: string
+}
 export interface ProjectStage { name: string; completion: number; risk: RiskLevel; status: 'Complete' | 'In progress' | 'Needs attention' | 'Not started'; delayDays: number }
 export interface Project {
   id: string; name: string; state: string; district: string; type: ProjectType
@@ -37,6 +45,15 @@ export interface DashboardSummary { total: number; highRisk: number; critical: n
 export interface ImportRecord { id: string; name: string; rows: number; valid: number; errors: string[]; date: string; source: 'Uploaded — validation only' }
 export interface ConfusionMatrix { truePositive: number; falsePositive: number; trueNegative: number; falseNegative: number }
 export interface ModelPerformance {
+  evaluationScope?: 'synthetic-held-out-test'
+  algorithm?: string
+  notice?: string
+  featureImportanceMethod?: string
+  featureSchemaVersion?: string
+  target?: string
+  probabilityNotice?: string
+  split?: { train: number; validation: number; test: number; strategy: string }
+  fallbackReason?: string
   version: string
   lastTrained: string
   trainingRecords: number

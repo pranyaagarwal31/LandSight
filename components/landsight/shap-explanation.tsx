@@ -1,12 +1,12 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import useSWR from 'swr'
+import { usePrediction } from '@/lib/landsight/use-prediction'
 import { ArrowDownRight, ArrowUpRight, Info } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { fetchMLPrediction, predictionInput, type ShapContribution } from '@/lib/landsight/ml'
+import type { ShapContribution } from '@/lib/landsight/ml'
 import type { Project } from '@/lib/landsight/types'
 import { FactorChart } from './charts'
 import { Panel } from './shared'
@@ -21,19 +21,15 @@ function ContributionRows({ factors, empty, unit }: { factors: ShapContribution[
 }
 
 export function ShapRiskExplanation({ project, fallback }: { project: Project; fallback: ReactNode }) {
-  const input = predictionInput(project)
-  const { data, error, isLoading, isValidating, mutate } = useSWR(['ml-explanation', input], ([, values]) => fetchMLPrediction(values), {
-    shouldRetryOnError: false, revalidateOnFocus: false, keepPreviousData: false,
-  })
+  const { mlPrediction: data, prediction, isLoading, isValidating, mutate } = usePrediction(project)
   const explanation = data?.explanation
-  if (error || !explanation || explanation.status === 'unavailable') return <div className="flex flex-col gap-4">
-    <Alert><Info/><AlertDescription><span role="status">{isLoading ? 'Calculating SHAP for the selected project. Demo rule contributions are shown below while loading.' : explanation?.status === 'unavailable' ? explanation.unavailableReason : 'SHAP unavailable: the trained-model service could not be reached or its response could not be verified. The demo rule fallback below is not SHAP.'}</span>{!isLoading && <Button variant="outline" size="sm" disabled={isValidating} onClick={() => void mutate()}>Retry SHAP</Button>}</AlertDescription></Alert>
-    {data && !error && <p className="text-xs text-muted-foreground">Trained prototype prediction retained: {data.score}/100 ({data.level}), {data.delayDays} predicted delay days. No SHAP attributions are shown for this prediction.</p>}
-    {fallback}
+  if (!data || !explanation || explanation.status === 'unavailable') return <div className="flex flex-col gap-4">
+    <Alert><Info/><AlertDescription><span role="status">{isLoading ? 'Calculating prediction and SHAP for the selected project. Demo rule contributions below are not SHAP.' : explanation?.status === 'unavailable' ? explanation.unavailableReason : `${prediction?.fallbackReason ?? 'SHAP unavailable.'} The demo rule fallback below is not SHAP.`}</span>{!isLoading && <Button variant="outline" size="sm" disabled={isValidating} onClick={() => void mutate()}>Retry SHAP</Button>}</AlertDescription></Alert>
+    {data ? <p className="text-xs text-muted-foreground">Trained prediction retained: {data.score}/100 ({data.level}), {data.delayDays} predicted delay days. No SHAP attributions are available for this prediction.</p> : fallback}
   </div>
   const unit = explanation.outputSpace === 'log_odds' ? 'log-odds' : 'probability'
   return <div className="flex flex-col gap-4">
-    <Alert><Info/><AlertDescription><span>{explanation.notice}</span><span>These contributions explain the ML prediction shown here. Other page scores, stages and simulations remain the separate demo-rule estimates.</span></AlertDescription></Alert>
+    <Alert><Info/><AlertDescription><span>{explanation.notice}</span><span>These contributions explain the risk score above from the same API response. Stage risks, recommendations, portfolio summaries and simulations remain separate demo-rule estimates.</span></AlertDescription></Alert>
     <div className="grid items-start gap-5 xl:grid-cols-[1fr_1.25fr]">
       <Panel title="Explainable AI" description={`TreeSHAP · ${explanation.algorithm} · ${unit}`}>
         <div className="mb-4 flex flex-wrap items-center gap-2"><Badge variant="outline">SYNTHETIC MODEL</Badge><span className="text-xs font-medium">ML risk: {data.score}/100 · {data.level}</span></div>

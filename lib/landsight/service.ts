@@ -1,9 +1,11 @@
 import { ALERTS, MODEL_PERFORMANCE, PROJECTS, recommendationsFor } from './data'
 import { predictRisk, simulateRisk, summarize } from './risk'
+import { fetchMLPrediction, MLAPIError, predictionInput } from './ml'
+import { fetchModelPerformance } from './performance'
 import type { Filters, ImportRecord, LandSightService, Project } from './types'
 
 export const API_CONTRACT = {
-  dashboard: 'GET /api/dashboard', projects: 'GET /api/projects', project: 'GET /api/projects/:id', predict: 'POST /api/predict', explanation: 'GET /api/projects/:id/explanation', recommendations: 'GET /api/projects/:id/recommendations', simulation: 'POST /api/simulation', gis: 'GET /api/gis/projects', alerts: 'GET /api/alerts', upload: 'POST /api/data/upload', performance: 'GET /api/model/performance',
+  dashboard: 'GET /api/dashboard', projects: 'GET /api/projects', project: 'GET /api/projects/:id', predict: 'POST /api/predict', explanation: 'GET /api/projects/:id/explanation', recommendations: 'GET /api/projects/:id/recommendations', simulation: 'POST /api/simulation', gis: 'GET /api/gis/projects', alerts: 'GET /api/alerts', upload: 'POST /api/data/upload', performance: 'GET /api/model-performance',
 } as const
 export const DEFAULT_FILTERS: Filters = { state: '', district: '', type: '', risk: '', search: '', progress: '', status: '' }
 export function filterProjects(projects: Project[], filters: Partial<Filters>) {
@@ -57,12 +59,21 @@ export const landSightService: LandSightService = {
   getProjects: async () => PROJECTS,
   getProject: async id => PROJECTS.find(p => p.id === id),
   getDashboard: async projects => summarize(projects),
-  predict: async project => predictRisk(project),
-  getExplanation: async id => PROJECTS.find(p => p.id === id)?.prediction.factors ?? [],
+  predict: async project => {
+    try { return await fetchMLPrediction(predictionInput(project)) }
+    catch (error) { return { ...predictRisk(project), fallbackReason: error instanceof MLAPIError ? error.message : 'Prediction error. The ML result could not be loaded.' } }
+  },
+  getExplanation: async id => {
+    const project = PROJECTS.find(p => p.id === id)
+    return project ? (await landSightService.predict(project)).factors : []
+  },
   getRecommendations: async id => PROJECTS.filter(p => !id || p.id === id).flatMap(recommendationsFor),
   simulate: async (project, input) => simulateRisk(project, input),
   getGISProjects: async () => PROJECTS,
   getAlerts: async () => ALERTS.map(a => ({ ...a })),
   validateUpload: validateCSV,
-  getModelPerformance: async () => MODEL_PERFORMANCE,
+  getModelPerformance: async () => {
+    try { return await fetchModelPerformance() }
+    catch (error) { return { ...MODEL_PERFORMANCE, fallbackReason: error instanceof MLAPIError ? error.message : 'Invalid model-performance response.' } }
+  },
 }

@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
-import connection from '@/backend/connection.json'
+import { forwardMLRequest } from '@/lib/landsight/backend'
 
 export const runtime = 'nodejs'
-
-const unavailable = () => NextResponse.json({ error: { code: 'ML_UNAVAILABLE', message: 'The ML service is unavailable. Demo estimates remain available.' } }, { status: 503 })
 
 export async function POST(request: Request) {
   if (!request.headers.get('content-type')?.includes('application/json')) {
@@ -34,15 +32,5 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: { code: 'INVALID_JSON', message: 'Send a valid JSON project.' } }, { status: 422 })
   }
-  try {
-    // The operator controls this fixed upstream; request data can never select a URL or model artifact.
-    const response = await fetch(new URL('/api/predict', connection.baseUrl), {
-      method: 'POST', body, headers: { 'Content-Type': 'application/json' },
-      cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(8000),
-    })
-    if (!response.ok && response.status !== 422) return unavailable()
-    return NextResponse.json(await response.json(), { status: response.status, headers: { 'Cache-Control': 'no-store' } })
-  } catch {
-    return unavailable()
-  }
+  return forwardMLRequest('/api/predict', body)
 }
