@@ -2,7 +2,7 @@
 
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Label, Pie, PieChart, ReferenceLine, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import type { Project, RiskFactor } from '@/lib/landsight/types'
+import type { ModelPerformance, Project, RiskFactor } from '@/lib/landsight/types'
 import { RISK_COLORS, RISK_LEVELS } from '@/lib/landsight/risk'
 import { EmptyState } from './shared'
 
@@ -27,6 +27,20 @@ export function DelayTrend({ projects }: { projects: Project[] }) {
 export function ProgressChart({ projects }: { projects: Project[] }) {
   const data = groupProjects(projects, 'type').map(p => ({ ...p, name: p.name === 'Road infrastructure' ? 'Road' : p.name, pending: 100 - p.progress }))
   return <ChartContainer config={config} className="h-[230px] w-full aspect-auto"><BarChart data={data} margin={{ left: -25, right: 0 }} accessibilityLayer><CartesianGrid vertical={false} strokeDasharray="3 3"/><XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={9}/><YAxis axisLine={false} tickLine={false} fontSize={9} unit="%"/><ChartTooltip content={<ChartTooltipContent/>}/><Bar dataKey="progress" stackId="a" fill="var(--color-progress)" barSize={22}/><Bar dataKey="pending" stackId="a" fill="var(--color-pending)" fillOpacity={.35} radius={[3, 3, 0, 0]}/></BarChart></ChartContainer>
+}
+export function ModelImportanceChart({ data }: { data: ModelPerformance['featureImportance'] }) {
+  return <div>
+    <ChartContainer config={{ importance: { label: 'Absolute contribution share (%)', color: 'var(--chart-1)' } }} className="h-[280px] w-full aspect-auto">
+      <BarChart data={data} layout="vertical" margin={{ left: 0, right: 18 }} accessibilityLayer>
+        <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+        <XAxis type="number" tickFormatter={value => `${value}%`} axisLine={false} tickLine={false} fontSize={10} />
+        <YAxis type="category" dataKey="name" width={132} axisLine={false} tickLine={false} fontSize={9} />
+        <ChartTooltip content={<ChartTooltipContent formatter={value => `${Number(value).toFixed(1)}%`} />} />
+        <Bar dataKey="importance" fill="var(--color-importance)" radius={[0, 3, 3, 0]} barSize={16} />
+      </BarChart>
+    </ChartContainer>
+    <ul className="sr-only">{data.map(item => <li key={item.name}>{item.name}: {item.importance.toFixed(1)} percent of absolute contributions.</li>)}</ul>
+  </div>
 }
 export function FactorChart({ factors }: { factors: RiskFactor[] }) {
   const data = [...factors].sort((a, b) => b.contribution - a.contribution)

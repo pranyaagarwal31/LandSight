@@ -19,11 +19,33 @@ export interface Recommendation { id: string; projectId: string; title: string; 
 export interface Alert { id: string; projectId: string; projectName: string; severity: RiskLevel; category: string; reason: string; date: string; action: string; status: 'Open' | 'Acknowledged' | 'Resolved' }
 export interface SimulationInput { compensationPaid: number; legalCases: number; approvalDays: number; acquiredParcels: number }
 export interface SimulationResult { projectId: string; current: RiskPrediction; simulated: RiskPrediction; riskReduction: number; daysSaved: number; input: SimulationInput; isDemo: true }
-export interface AuditLog { id: string; user: string; action: string; project: string; timestamp: string; result: 'Success' | 'Reviewed' | 'Validated'; source: 'Synthetic' | 'This session' }
+export interface AuditLog {
+  id: string
+  user: string
+  role: Role | 'Demo engine'
+  action: string
+  module: string
+  project: string
+  details: string
+  timestamp: string
+  result: 'Success' | 'Reviewed' | 'Validated' | 'Needs correction' | 'Failed'
+  source: 'Synthetic' | 'This session'
+}
+export interface AuditContext { module?: string; details?: string; role?: Role }
 export interface Filters { state: string; district: string; type: string; risk: string; search: string; progress: string; status: string }
 export interface DashboardSummary { total: number; highRisk: number; critical: number; progress: number; pending: number; atRiskPercent: number; averageDelay: number; states: number }
 export interface ImportRecord { id: string; name: string; rows: number; valid: number; errors: string[]; date: string; source: 'Uploaded — validation only' }
-export interface ModelPerformance { version: string; lastTrained: string; trainingRecords: number; features: number; metrics: { name: string; value: string; description: string }[]; isDemo: true }
+export interface ConfusionMatrix { truePositive: number; falsePositive: number; trueNegative: number; falseNegative: number }
+export interface ModelPerformance {
+  version: string
+  lastTrained: string
+  trainingRecords: number
+  features: number
+  metrics: { name: string; value: string; description: string }[]
+  confusionMatrix: ConfusionMatrix
+  featureImportance: { name: string; importance: number }[]
+  isDemo: true
+}
 export interface LandSightService {
   getProjects(): Promise<Project[]>
   getProject(id: string): Promise<Project | undefined>

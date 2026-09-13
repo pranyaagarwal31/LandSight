@@ -79,10 +79,11 @@
   ::selection { background: #d8eadf; }
 }
 @layer components {
-  .page-stack { @apply flex flex-col gap-6; }
+  .page-stack { @apply flex min-w-0 flex-col gap-6; }
+  .page-stack > * { min-width: 0; }
   .eyebrow { @apply text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground; }
   .filter-select { @apply h-9 min-w-0 rounded-md border bg-card px-3 pr-7 text-xs text-foreground outline-none focus:ring-2 focus:ring-primary/20; }
-  .table-wrap { @apply w-full overflow-x-auto; }
+  .table-wrap { @apply relative min-w-0 w-full max-w-full overflow-x-auto overscroll-x-contain; }
   .data-table { @apply w-full text-left text-xs; }
   .data-table thead { @apply border-y bg-muted/50; }
   .data-table th { @apply whitespace-nowrap px-4 py-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground; }

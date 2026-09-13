@@ -1,8 +1,13 @@
-import type { Alert, AuditLog, ModelPerformance, Project, ProjectType, Recommendation } from './types'
+import type { Alert, AuditLog, ModelPerformance, Project, ProjectType, Recommendation, Role } from './types'
 import { getStages, predictRisk } from './risk'
 
 export const SNAPSHOT_DATE = '2026-09-13'
 export const DEMO_NOTICE = 'DEMO / SYNTHETIC DATA — For Demonstration Only'
+export const ROLE_PROFILES: Record<Role, { name: string; title: string; eyebrow: string; focus: string; action: string; href: string }> = {
+  Admin: { name: 'Aarav Sharma', title: 'Executive dashboard', eyebrow: 'NATIONAL ACQUISITION OVERVIEW', focus: 'Coordinate high-risk interventions, data quality, and portfolio-wide oversight.', action: 'Explore risk analysis', href: '/risk-analysis' },
+  'State/District Officer': { name: 'Priya Verma', title: 'Regional officer dashboard', eyebrow: 'STATE & DISTRICT OVERSIGHT', focus: 'Prioritize legal cases, pending compensation, and district clearance bottlenecks. Use the geographic filters to focus your review.', action: 'Compare districts', href: '/analytics' },
+  'Project Manager': { name: 'Arjun Mehta', title: 'Project delivery dashboard', eyebrow: 'PROJECT DELIVERY PRIORITIES', focus: 'Focus on pending possession and clearances, then test interventions against the predicted delivery delay.', action: 'Test an intervention', href: '/simulation' },
+}
 export const PROJECT_TYPES: ProjectType[] = ['Highway', 'Railway', 'Irrigation', 'Power', 'Industrial', 'Road infrastructure']
 type Seed = [name: string, state: string, district: string, type: ProjectType, totalParcels: number, acquiredParcels: number, compensationPaid: number, legalCases: number, approvalDays: number, complexity: number, latitude: number, longitude: number]
 const seeds: Seed[] = [
@@ -58,13 +63,28 @@ export const ALERTS: Alert[] = PROJECTS.flatMap(p => {
   return entries.map(([id, category, reason, action]) => ({ id: `${p.id}-${id}`, projectId: p.id, projectName: p.name, severity: p.riskLevel, category, reason, action, date: `${SNAPSHOT_DATE}T09:00:00+05:30`, status: 'Open' as const }))
 })
 export const AUDIT_LOGS: AuditLog[] = [
-  { id: 'seed-1', user: 'Demo Administrator', action: 'Loaded synthetic project dataset', project: 'All projects', timestamp: '2026-09-13T09:00:00+05:30', result: 'Success', source: 'Synthetic' },
-  { id: 'seed-2', user: 'Demo Risk Engine', action: 'Calculated demonstration risk predictions', project: 'All projects', timestamp: '2026-09-13T09:01:00+05:30', result: 'Success', source: 'Synthetic' },
-  { id: 'seed-3', user: 'Demo District Officer', action: 'Reviewed compensation bottlenecks', project: 'LS-2026-002', timestamp: '2026-09-13T09:15:00+05:30', result: 'Reviewed', source: 'Synthetic' },
+  { id: 'seed-1', user: 'Demo Administrator', role: 'Admin', module: 'Data Management', action: 'Loaded synthetic project dataset', project: 'All projects', details: '24 demonstration records across 18 states. No government source was contacted.', timestamp: '2026-09-13T09:00:00+05:30', result: 'Success', source: 'Synthetic' },
+  { id: 'seed-2', user: 'Demo Risk Engine', role: 'Demo engine', module: 'Risk Analysis', action: 'Calculated demonstration risk predictions', project: 'All projects', details: 'LS-DEMO-1.0 uses six deterministic factors and an 8-point baseline; no trained ML model.', timestamp: '2026-09-13T09:01:00+05:30', result: 'Success', source: 'Synthetic' },
+  { id: 'seed-3', user: 'Demo District Officer', role: 'State/District Officer', module: 'Recommendations', action: 'Reviewed compensation bottlenecks', project: 'LS-2026-002', details: 'Illustrative review of outstanding compensation. No award or payment was changed.', timestamp: '2026-09-13T09:15:00+05:30', result: 'Reviewed', source: 'Synthetic' },
+  { id: 'seed-4', user: 'Demo Project Manager', role: 'Project Manager', module: 'Impact Simulation', action: 'Compared an intervention scenario', project: 'LS-2026-001', details: 'Illustrative comparison of compensation, litigation, and parcel possession; original record unchanged.', timestamp: '2026-09-13T09:25:00+05:30', result: 'Success', source: 'Synthetic' },
+  { id: 'seed-5', user: 'Demo District Officer', role: 'State/District Officer', module: 'Alerts', action: 'Reviewed clearance delay escalation', project: 'LS-2026-010', details: 'Synthetic review event only; it does not acknowledge or resolve a current session alert.', timestamp: '2026-09-13T09:40:00+05:30', result: 'Reviewed', source: 'Synthetic' },
+  { id: 'seed-6', user: 'Demo Administrator', role: 'Admin', module: 'Data Management', action: 'Flagged an invalid sample CSV', project: 'Example import', details: 'Illustrative validation failure: acquired parcels exceeded the total. No records imported.', timestamp: '2026-09-13T10:00:00+05:30', result: 'Needs correction', source: 'Synthetic' },
+  { id: 'seed-7', user: 'Demo Administrator', role: 'Admin', module: 'Model Performance', action: 'Reviewed model evaluation preview', project: 'LS-DEMO-1.0', details: 'Metrics, confusion matrix, and training metadata are prototype illustrations, not real evaluation results.', timestamp: '2026-09-13T10:15:00+05:30', result: 'Reviewed', source: 'Synthetic' },
 ]
+const confusionMatrix = { truePositive: 445, falseNegative: 55, falsePositive: 90, trueNegative: 660 }
+const evaluationTotal = Object.values(confusionMatrix).reduce((sum, count) => sum + count, 0)
+const featureTotals = PROJECTS[0].prediction.factors.map(factor => ({
+  name: factor.name,
+  total: PROJECTS.reduce((sum, project) => sum + Math.abs(project.prediction.factors.find(f => f.id === factor.id)!.contribution), 0),
+}))
+const contributionTotal = featureTotals.reduce((sum, factor) => sum + factor.total, 0)
 export const MODEL_PERFORMANCE: ModelPerformance = {
   version: 'LS-DEMO-1.0', lastTrained: '2026-09-10', trainingRecords: 12500, features: 18, isDemo: true,
+  confusionMatrix,
+  featureImportance: featureTotals.map(f => ({ name: f.name, importance: f.total / contributionTotal * 100 })).sort((a, b) => b.importance - a.importance),
   metrics: [
+    { name: 'Accuracy', value: `${((confusionMatrix.truePositive + confusionMatrix.trueNegative) / evaluationTotal * 100).toFixed(1)}%`, description: 'Computed from the illustrative confusion matrix' },
+    { name: 'Precision', value: `${(confusionMatrix.truePositive / (confusionMatrix.truePositive + confusionMatrix.falsePositive) * 100).toFixed(1)}%`, description: 'Illustrative delayed predictions that are correct' },
     { name: 'ROC-AUC', value: '0.91', description: 'Illustrative discrimination across risk thresholds' },
     { name: 'F1 Score', value: '0.86', description: 'Illustrative precision–recall balance' },
     { name: 'Recall', value: '0.89', description: 'Illustrative detection of delayed projects' },
