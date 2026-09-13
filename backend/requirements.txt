@@ -6,3 +6,4 @@ scikit-learn==1.9.1
 joblib==1.6.0
 xgboost-cpu==3.4.1
 shap==0.52.0
+asyncpg==0.31.0

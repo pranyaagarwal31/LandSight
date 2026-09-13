@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS landsight_projects (
+    id text PRIMARY KEY CHECK (id ~ '^[A-Za-z0-9_-]{1,128}$'),
+    name text NOT NULL,
+    state text NOT NULL,
+    district text NOT NULL,
+    type text NOT NULL CHECK (type IN ('Highway','Railway','Irrigation','Power','Industrial','Road infrastructure')),
+    total_parcels integer NOT NULL CHECK (total_parcels > 0),
+    acquired_parcels integer NOT NULL CHECK (acquired_parcels BETWEEN 0 AND total_parcels),
+    compensation_paid double precision NOT NULL CHECK (compensation_paid BETWEEN 0 AND 100),
+    legal_cases integer NOT NULL CHECK (legal_cases >= 0),
+    approval_days integer NOT NULL CHECK (approval_days BETWEEN 0 AND 180),
+    complexity integer NOT NULL CHECK (complexity BETWEEN 1 AND 5),
+    landowners integer NOT NULL CHECK (landowners >= 0),
+    compensation_budget_cr double precision NOT NULL CHECK (compensation_budget_cr >= 0 AND compensation_budget_cr < 'Infinity'::float8),
+    approvals_pending integer NOT NULL CHECK (approvals_pending >= 0),
+    clearance_status text NOT NULL,
+    expected_completion date NOT NULL,
+    agency text NOT NULL,
+    location geometry(Point,4326) NOT NULL CHECK (NOT ST_IsEmpty(location) AND ST_X(location) BETWEEN -180 AND 180 AND ST_Y(location) BETWEEN -90 AND 90),
+    source text NOT NULL DEFAULT 'Synthetic' CHECK (source = 'Synthetic'),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);

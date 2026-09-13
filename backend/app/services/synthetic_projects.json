@@ -1,0 +1,30 @@
+{
+  "source": "Synthetic",
+  "notice": "Existing LandSight prototype dataset from lib/landsight/data.ts. Demonstration only; not government records or surveyed parcel boundaries.",
+  "seeds": [
+    ["Eastern Freight Corridor — Patna", "Bihar", "Patna", "Railway", 1240, 310, 28, 23, 110, 5, 25.5941, 85.1376],
+    ["Pune Ring Road — Eastern Section", "Maharashtra", "Pune", "Highway", 1860, 632, 35, 18, 95, 5, 18.5204, 73.8567],
+    ["Varanasi–Ghazipur Highway", "Uttar Pradesh", "Varanasi", "Highway", 980, 382, 42, 16, 90, 4, 25.3176, 82.9739],
+    ["Bengaluru Peripheral Rail Link", "Karnataka", "Bengaluru Rural", "Railway", 720, 317, 48, 14, 85, 4, 13.2257, 77.5750],
+    ["Brahmaputra Irrigation Extension", "Assam", "Kamrup", "Irrigation", 860, 258, 30, 21, 105, 5, 26.1445, 91.7362],
+    ["Nagpur Industrial Growth Centre", "Maharashtra", "Nagpur", "Industrial", 1120, 650, 58, 11, 60, 3, 21.1458, 79.0882],
+    ["Jaipur Northern Bypass", "Rajasthan", "Jaipur", "Road infrastructure", 650, 442, 72, 5, 35, 3, 26.9124, 75.7873],
+    ["Surat Green Energy Corridor", "Gujarat", "Surat", "Power", 540, 459, 88, 2, 15, 2, 21.1702, 72.8311],
+    ["Chennai Logistics Park", "Tamil Nadu", "Tiruvallur", "Industrial", 910, 400, 45, 15, 80, 4, 13.1437, 79.9089],
+    ["Hyderabad Regional Ring Road", "Telangana", "Rangareddy", "Highway", 1680, 722, 40, 19, 100, 4, 17.2543, 78.2040],
+    ["Indore–Dewas Road Widening", "Madhya Pradesh", "Indore", "Road infrastructure", 430, 370, 91, 1, 10, 2, 22.7196, 75.8577],
+    ["Mahanadi Canal Modernisation", "Odisha", "Cuttack", "Irrigation", 780, 429, 60, 9, 55, 3, 20.4625, 85.8830],
+    ["Kochi Eastern Mobility Corridor", "Kerala", "Ernakulam", "Road infrastructure", 610, 348, 62, 10, 45, 4, 9.9816, 76.2999],
+    ["Ludhiana Rail Freight Terminal", "Punjab", "Ludhiana", "Railway", 420, 344, 85, 3, 20, 2, 30.9010, 75.8573],
+    ["Ranchi Power Transmission Link", "Jharkhand", "Ranchi", "Power", 590, 236, 38, 17, 95, 4, 23.3441, 85.3096],
+    ["Raipur Integrated Industrial Area", "Chhattisgarh", "Raipur", "Industrial", 1040, 614, 64, 8, 50, 3, 21.2514, 81.6296],
+    ["Lucknow Outer Ring Extension", "Uttar Pradesh", "Lucknow", "Highway", 890, 534, 67, 7, 45, 3, 26.8467, 80.9462],
+    ["Ahmedabad–Mehsana Rail Upgrade", "Gujarat", "Ahmedabad", "Railway", 680, 578, 90, 2, 12, 2, 23.0225, 72.5714],
+    ["Krishna Basin Lift Irrigation", "Andhra Pradesh", "Krishna", "Irrigation", 1150, 483, 46, 15, 90, 4, 16.5062, 80.6480],
+    ["Jodhpur Solar Evacuation Line", "Rajasthan", "Jodhpur", "Power", 350, 322, 96, 0, 5, 1, 26.2389, 73.0243],
+    ["Coimbatore Western Bypass", "Tamil Nadu", "Coimbatore", "Road infrastructure", 570, 399, 76, 4, 30, 3, 11.0168, 76.9558],
+    ["Mysuru Industrial Access Road", "Karnataka", "Mysuru", "Industrial", 460, 377, 87, 2, 18, 2, 12.2958, 76.6394],
+    ["Siliguri Connectivity Corridor", "West Bengal", "Darjeeling", "Highway", 740, 237, 32, 20, 110, 5, 26.7271, 88.3953],
+    ["Dehradun Regional Road Link", "Uttarakhand", "Dehradun", "Road infrastructure", 390, 269, 73, 5, 32, 4, 30.3165, 78.0322]
+  ]
+}

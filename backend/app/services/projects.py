@@ -1,3 +1,5 @@
+from typing import Protocol
+
 from ..schemas.contracts import ProjectInformation, ProjectInput, ProjectStage, RiskPrediction
 from .prediction import js_round, risk_level
 
@@ -31,6 +33,31 @@ class DemoProjectRepository:
 
     def get_project(self, project_id: str) -> ProjectInput | None:
         return next((p for p in self.list_projects() if p.id == project_id), None)
+
+
+class ProjectRepository(Protocol):
+    storage_mode: str
+
+    async def list_projects(self) -> list[ProjectInput]: ...
+    async def get_project(self, project_id: str) -> ProjectInput | None: ...
+    async def save_predictions(self, predictions: list[tuple[ProjectInput, RiskPrediction]]) -> None: ...
+    async def check(self) -> None: ...
+
+
+class DemoProjectStorage:
+    storage_mode = "demo-memory"
+
+    async def list_projects(self) -> list[ProjectInput]:
+        return DemoProjectRepository().list_projects()
+
+    async def get_project(self, project_id: str) -> ProjectInput | None:
+        return DemoProjectRepository().get_project(project_id)
+
+    async def save_predictions(self, predictions: list[tuple[ProjectInput, RiskPrediction]]) -> None:
+        pass
+
+    async def check(self) -> None:
+        pass
 
 
 def project_information(project: ProjectInput, prediction: RiskPrediction) -> ProjectInformation:
