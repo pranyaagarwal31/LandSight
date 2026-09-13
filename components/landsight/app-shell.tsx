@@ -27,6 +27,9 @@ export function Brand() { return <Link href="/" className="flex items-center gap
 </Link> }
 function Sidebar({ close }: { close?: () => void }) {
   const pathname = usePathname()
+  const { user, selectedProjectId } = useWorkspace()
+  const projectId = pathname.startsWith('/projects/') ? pathname.split('/')[2] : selectedProjectId
+  const hrefFor = (href: string) => projectId && ['/risk-analysis', '/simulation', '/recommendations'].includes(href) ? `${href}?project=${encodeURIComponent(projectId)}` : href
   const { data: alerts } = useAlerts()
   const count = alerts?.filter(a => a.status === 'Open').length ?? 0
   return <div className="flex h-full flex-col bg-card">
@@ -35,11 +38,11 @@ function Sidebar({ close }: { close?: () => void }) {
 </div>
 <div className="mx-4 mb-5 flex items-center gap-2 rounded-md border bg-background px-3 py-2.5">
 <Globe2 className="size-3.5 text-primary" />
-<span className="text-[11px] font-medium">National command center</span>
+<span className="text-[11px] font-medium">{user.role === 'Admin' ? 'National command center' : user.role === 'State/District Officer' ? 'Regional officer workspace' : 'Project delivery workspace'}</span>
 </div>
 <nav aria-label="Main navigation" className="flex flex-1 flex-col gap-5 overflow-y-auto px-3">{groups.map(group => <div key={group.label}>
 <p className="mb-2 px-3 text-[9px] font-medium tracking-[.12em] text-muted-foreground">{group.label}</p>
-<div className="flex flex-col gap-1">{group.links.map(item => <Link key={item.href} href={item.href} onClick={close} className="nav-link" data-active={pathname === item.href || (item.href === '/projects' && pathname.startsWith('/projects/'))} aria-current={pathname === item.href ? 'page' : undefined}>
+<div className="flex flex-col gap-1">{group.links.map(item => <Link key={item.href} href={hrefFor(item.href)} onClick={close} className="nav-link" data-active={pathname === item.href || (item.href === '/projects' && pathname.startsWith('/projects/'))} aria-current={pathname === item.href || (item.href === '/projects' && pathname.startsWith('/projects/')) ? 'page' : undefined}>
 <item.icon className="size-[16px]" strokeWidth={1.65} />
 <span className="flex-1">{item.label}</span>{item.label === 'Alerts' && count > 0 && <Badge variant="critical">{count}</Badge>}{item.label === 'Risk Analysis' && <span className="text-[9px] font-semibold text-primary">AI</span>}</Link>)}</div>
 </div>)}</nav>
@@ -64,7 +67,7 @@ function Sidebar({ close }: { close?: () => void }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { filters, setFilters, user } = useWorkspace()
+  const { filters, setFilters, resetFilters, user } = useWorkspace()
   const { data: projects = [] } = useProjects()
   const { data: alerts = [] } = useAlerts()
   const [search, setSearch] = useState('')
@@ -101,7 +104,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 <span className="text-sm font-semibold lg:hidden">LandSight</span>
 </div>
 <div className="flex min-w-0 items-center gap-3 sm:gap-5">
-<form className="hidden items-center gap-2 sm:flex" role="search" onSubmit={e => { e.preventDefault(); setFilters({ search }); router.push('/projects') }}>
+<form className="hidden items-center gap-2 sm:flex" role="search" onSubmit={e => { e.preventDefault(); resetFilters(); setFilters({ search: search.trim() }); router.push('/projects') }}>
 <button type="submit" aria-label="Search all projects" className="text-muted-foreground">
 <Search className="size-4" />
 </button>

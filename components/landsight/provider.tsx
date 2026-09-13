@@ -1,9 +1,9 @@
 'use client'
 
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import useSWR, { SWRConfig } from 'swr'
-import { AUDIT_LOGS, ROLE_PROFILES } from '@/lib/landsight/data'
+import { AUDIT_LOGS, ROLE_PERMISSIONS, ROLE_PROFILES } from '@/lib/landsight/data'
 import { DEFAULT_FILTERS, landSightService } from '@/lib/landsight/service'
 import type { Alert, AuditContext, AuditLog, Filters, ImportRecord, Role, User } from '@/lib/landsight/types'
 import { Toaster } from '@/components/ui/sonner'
@@ -14,6 +14,9 @@ interface WorkspaceContext {
   resetFilters: () => void
   user: User
   setRole: (role: Role) => void
+  permissions: (typeof ROLE_PERMISSIONS)[Role]
+  selectedProjectId: string
+  setSelectedProject: (id: string) => void
   addAudit: (action: string, project?: string, result?: AuditLog['result'], context?: AuditContext) => void
 }
 const moduleNames: Record<string, string> = {
@@ -27,6 +30,8 @@ function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [filters, updateFilters] = useState<Filters>(DEFAULT_FILTERS)
   const [role, setRole] = useState<Role>('Admin')
   const pathname = usePathname()
+  const { data: selectedProjectId = '', mutate: mutateSelection } = useSWR<string>('session:project', null, { fallbackData: '' })
+  const setSelectedProject = useCallback((id: string) => { void mutateSelection(id, { revalidate: false }) }, [mutateSelection])
   const { mutate } = useSWR<AuditLog[]>('session:audit', null, { fallbackData: AUDIT_LOGS })
   const user: User = { id: 'demo-viewer', name: ROLE_PROFILES[role].name, role, mode: 'role-preview' }
   const addAudit: WorkspaceContext['addAudit'] = (action, project = 'Workspace', result = 'Success', context = {}) => {
@@ -40,7 +45,7 @@ function WorkspaceProvider({ children }: { children: ReactNode }) {
     void mutate(current => [row, ...(current ?? AUDIT_LOGS)], { revalidate: false })
   }
   return (
-    <Context.Provider value={{ filters, setFilters: next => updateFilters(current => ({ ...current, ...next })), resetFilters: () => updateFilters(DEFAULT_FILTERS), user, setRole, addAudit }}>
+    <Context.Provider value={{ filters, setFilters: next => updateFilters(current => ({ ...current, ...next })), resetFilters: () => updateFilters(DEFAULT_FILTERS), user, setRole, permissions: ROLE_PERMISSIONS[role], selectedProjectId, setSelectedProject, addAudit }}>
       {children}
       <Toaster theme="light" position="bottom-right" richColors />
     </Context.Provider>

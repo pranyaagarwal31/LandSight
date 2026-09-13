@@ -19,7 +19,7 @@ import type { Project } from '@/lib/landsight/types'
 
 export function Dashboard() { return <DataBoundary>{projects => <DashboardContent allProjects={projects}/>}</DataBoundary> }
 function DashboardContent({ allProjects }: { allProjects: Project[] }) {
-  const { filters, addAudit, user } = useWorkspace()
+  const { filters, addAudit, user, permissions } = useWorkspace()
   const profile = ROLE_PROFILES[user.role]
   const isOfficer = user.role === 'State/District Officer'
   const isManager = user.role === 'Project Manager'
@@ -33,7 +33,7 @@ function DashboardContent({ allProjects }: { allProjects: Project[] }) {
   const factors = projects[0]?.prediction.factors.map(f => ({ name: f.name, count: projects.filter(p => p.primaryRisk === f.name).length })).filter(f => f.count).sort((a, b) => b.count - a.count) ?? []
   return <div className="page-stack">
 <PageHeader eyebrow={profile.eyebrow} title={profile.title} description={user.role === 'Admin' ? 'See the risks ahead. Keep infrastructure moving forward.' : `${user.role} UI preview · All figures follow the current filters.`}>
-<Button variant="outline" size="lg" disabled={!projects.length} onClick={() => { exportProjects(projects); addAudit('Exported synthetic dashboard report', 'Filtered projects'); toast.success('Synthetic project report downloaded') }}>
+<Button variant="outline" size="lg" disabled={!projects.length} onClick={() => { exportProjects(projects); addAudit('Exported synthetic dashboard report', 'Filtered projects', 'Success', { details: `Downloaded ${projects.length} synthetic projects as CSV from the ${user.role} dashboard. Filters: ${JSON.stringify(filters)}.` }); toast.success('Synthetic project report downloaded') }}>
 <Download data-icon="inline-start"/>Export report</Button>
 <Link href={profile.href} className={buttonVariants({ size: 'lg' })}>
 <ScanLine data-icon="inline-start"/>{profile.action}</Link>
@@ -63,7 +63,7 @@ function DashboardContent({ allProjects }: { allProjects: Project[] }) {
 <h2 className="text-xs font-semibold">{stats.critical > 0 ? `${stats.critical} projects need your attention` : 'Your selected portfolio is below critical risk'}</h2>
 <Badge variant="outline">{user.role === 'Admin' ? 'DEMO INSIGHT' : 'ROLE PREVIEW'}</Badge>
 </div>
-<p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{user.role !== 'Admin' ? `${profile.focus} This changes presentation only, not access permissions.` : highRisk.length ? 'Unresolved legal cases and compensation bottlenecks are driving acquisition delays. Early action can make a difference.' : 'Continue monitoring clearances, compensation, and parcel possession to maintain progress.'}</p>
+<p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{user.role !== 'Admin' ? `${profile.focus} ${permissions.summary} These are demo UI permissions, not server-enforced access controls.` : highRisk.length ? 'Unresolved legal cases and compensation bottlenecks are driving acquisition delays. Early action can make a difference.' : 'Continue monitoring clearances, compensation, and parcel possession to maintain progress.'}</p>
 </div>
 <Link href="/recommendations" className="small-link shrink-0">Review recommendations<ArrowRight className="size-3.5"/>
 </Link>

@@ -12,7 +12,7 @@ import type { Role } from '@/lib/landsight/types'
 import { cn } from '@/lib/utils'
 
 const roles: { name: Role; description: string; icon: typeof ShieldCheck }[] = [
-  { name: 'Admin', description: 'National overview, CSV validation, and alert resolution.', icon: ShieldCheck },
+  { name: 'Admin', description: 'National overview, CSV validation, alert resolution, and audit export.', icon: ShieldCheck },
   { name: 'State/District Officer', description: 'Regional acquisition monitoring and issue review.', icon: Building2 },
   { name: 'Project Manager', description: 'Project risks, recommendations, and intervention scenarios.', icon: UserRoundCog },
 ]
@@ -45,7 +45,7 @@ export function LoginPage() {
 <Badge variant="medium">DEMONSTRATION WORKSPACE</Badge>
 <h2 className="mt-5 text-3xl font-semibold tracking-tight">Open your workspace</h2>
 <p className="mt-3 text-sm leading-relaxed text-muted-foreground">Choose a role to explore the LandSight interface. No account or credentials are required.</p>
-<form className="mt-8" onSubmit={e => { e.preventDefault(); setRole(role); resetFilters(); addAudit(`Changed interface role preview to ${role}`, 'Workspace', 'Success', { role, details: `Switched from ${user.role} to ${role}. Dashboard priorities updated and filters cleared; no authentication or permissions granted.` }); router.push('/') }}>
+<form className="mt-8" onSubmit={e => { e.preventDefault(); setRole(role); resetFilters(); addAudit(`Changed interface role preview to ${role}`, 'Workspace', 'Success', { details: `Switched from ${user.role} to ${role}. Dashboard priorities and demo action permissions updated; filters cleared. No authentication or server access granted.` }); router.push('/') }}>
 <FieldGroup>
 <FieldSet>
 <FieldLegend>Preview as</FieldLegend>{roles.map(item => <Field key={item.name} orientation="horizontal" className={cn('rounded-lg border p-4', role === item.name && 'border-primary bg-secondary/50')}>
@@ -60,7 +60,7 @@ export function LoginPage() {
 </Field>)}</FieldSet>
 <Button type="submit" size="lg">Enter demonstration<ArrowRight data-icon="inline-end"/>
 </Button>
-<FieldDescription>Role choices change dashboard priorities and interface affordances. All demo routes remain accessible. Filters reset when you enter; nothing authenticates you or enforces data access.</FieldDescription>
+<FieldDescription>Role choices change dashboard priorities and demo action permissions. Only Admin can validate CSVs, resolve alerts, or export audit logs. All roles can browse every demo route, review recommendations, acknowledge alerts, export project reports, and run simulations. Filters reset on entry; no data-access security is enforced.</FieldDescription>
 </FieldGroup>
 </form>
 <Alert className="mt-7">

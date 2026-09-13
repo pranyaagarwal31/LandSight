@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { ArrowDownRight, ArrowUpRight, Clock3, Info, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -7,22 +8,28 @@ import { Panel, ProgressBar, RiskBadge } from './shared'
 import { FactorChart } from './charts'
 import type { Project, RiskPrediction } from '@/lib/landsight/types'
 import { RISK_COLORS } from '@/lib/landsight/risk'
-import { filterProjects } from '@/lib/landsight/service'
+import { resolveProjectSelection } from '@/lib/landsight/service'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useWorkspace } from './provider'
 
 export function useProjectSelection(projects: Project[]) {
   const params = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
-  const { filters } = useWorkspace()
-  const options = filterProjects(projects, filters)
-  const id = params.get('project')
-  const project = id ? options.find(p => p.id === id) : options[0]
-  const selectProject = (id: string) => router.replace(`${pathname}?project=${encodeURIComponent(id)}`, { scroll: false })
-  return { project, options, selectProject }
+  const { filters, selectedProjectId, setSelectedProject } = useWorkspace()
+  const { project, options, notice } = resolveProjectSelection(projects, filters, params.get('project'), selectedProjectId)
+  useEffect(() => { if (project) setSelectedProject(project.id) }, [project?.id, setSelectedProject])
+  const selectProject = (id: string) => {
+    setSelectedProject(id)
+    const next = new URLSearchParams(params.toString())
+    if (id) next.set('project', id); else next.delete('project')
+    router.replace(`${pathname}${next.size ? `?${next}` : ''}`, { scroll: false })
+  }
+  return { project, options, notice, selectProject }
 }
-export function ProjectSelector({ projects, value, onChange }: { projects: Project[]; value?: string; onChange: (id: string) => void }) {
-  return <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-4"><span className="text-xs font-medium text-muted-foreground">Selected project</span><select aria-label="Select project for analysis" value={value ?? ''} onChange={e => onChange(e.target.value)} className="filter-select max-w-full flex-1 sm:max-w-[540px]">{!value && <option value="">Select an available project</option>}{projects.map(p => <option value={p.id} key={p.id}>{p.name} · {p.id}</option>)}</select><Badge variant="outline">SYNTHETIC PROJECT</Badge></div>
+export function ProjectSelector({ projects, value, onChange, notice }: { projects: Project[]; value?: string; onChange: (id: string) => void; notice?: string }) {
+  return <><div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-4"><span className="text-xs font-medium text-muted-foreground">Selected project</span><select aria-label="Select project for analysis" value={value ?? ''} onChange={e => onChange(e.target.value)} className="filter-select max-w-full flex-1 sm:max-w-[540px]">{!value && <option value="">Select an available project</option>}{projects.map(p => <option value={p.id} key={p.id}>{p.name} · {p.id}</option>)}</select><Badge variant="outline">SYNTHETIC PROJECT</Badge></div>{notice && <Alert><Info/><AlertDescription>{notice}<Button size="sm" variant="outline" onClick={() => onChange('')}>Clear project link</Button></AlertDescription></Alert>}</>
 }
 export function RiskScore({ prediction }: { prediction: RiskPrediction }) {
   const color = RISK_COLORS[prediction.level]

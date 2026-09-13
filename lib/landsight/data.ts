@@ -8,6 +8,11 @@ export const ROLE_PROFILES: Record<Role, { name: string; title: string; eyebrow:
   'State/District Officer': { name: 'Priya Verma', title: 'Regional officer dashboard', eyebrow: 'STATE & DISTRICT OVERSIGHT', focus: 'Prioritize legal cases, pending compensation, and district clearance bottlenecks. Use the geographic filters to focus your review.', action: 'Compare districts', href: '/analytics' },
   'Project Manager': { name: 'Arjun Mehta', title: 'Project delivery dashboard', eyebrow: 'PROJECT DELIVERY PRIORITIES', focus: 'Focus on pending possession and clearances, then test interventions against the predicted delivery delay.', action: 'Test an intervention', href: '/simulation' },
 }
+export const ROLE_PERMISSIONS: Record<Role, { validateCSV: boolean; resolveAlerts: boolean; exportAudit: boolean; summary: string }> = {
+  Admin: { validateCSV: true, resolveAlerts: true, exportAudit: true, summary: 'CSV validation, alert resolution, and audit export enabled.' },
+  'State/District Officer': { validateCSV: false, resolveAlerts: false, exportAudit: false, summary: 'Review recommendations, acknowledge alerts, simulate interventions, and export project reports. Data validation, alert resolution, and audit export are Admin-only.' },
+  'Project Manager': { validateCSV: false, resolveAlerts: false, exportAudit: false, summary: 'Test delivery scenarios, review recommendations, acknowledge alerts, and export project reports. Data validation, alert resolution, and audit export are Admin-only.' },
+}
 export const PROJECT_TYPES: ProjectType[] = ['Highway', 'Railway', 'Irrigation', 'Power', 'Industrial', 'Road infrastructure']
 type Seed = [name: string, state: string, district: string, type: ProjectType, totalParcels: number, acquiredParcels: number, compensationPaid: number, legalCases: number, approvalDays: number, complexity: number, latitude: number, longitude: number]
 const seeds: Seed[] = [

@@ -15,10 +15,10 @@ import type { Project, SimulationInput, SimulationResult } from '@/lib/landsight
 
 export function SimulationPage() { return <DataBoundary>{projects => <SimulationContent projects={projects}/>}</DataBoundary> }
 function SimulationContent({ projects }: { projects: Project[] }) {
-  const { project, options, selectProject } = useProjectSelection(projects)
+  const { project, options, notice, selectProject } = useProjectSelection(projects)
   return <div className="page-stack">
 <PageHeader eyebrow="WHAT-IF DECISION SUPPORT" title="Impact simulation" description="Test an intervention before you act. See how resolving bottlenecks could change delay risk."/>
-<ProjectSelector projects={options} value={project?.id} onChange={selectProject}/>{project ? <SimulationForm key={project.id} project={project}/> : <FilterEmpty/>}<DemoCallout title="Simulation uses demonstration model logic.">Results are deterministic scenarios, not causal estimates or official forecasts. No project records are modified. The simulation service can be replaced by the future FastAPI / ML endpoint.</DemoCallout>
+<ProjectSelector projects={options} value={project?.id} onChange={selectProject} notice={notice}/>{project ? <SimulationForm key={project.id} project={project}/> : <FilterEmpty/>}<DemoCallout title="Simulation uses demonstration model logic.">Results are deterministic scenarios, not causal estimates or official forecasts. No project records are modified. The simulation service can be replaced by the future FastAPI / ML endpoint.</DemoCallout>
 </div>
 }
 function SimulationForm({ project: p }: { project: Project }) {
@@ -32,7 +32,7 @@ function SimulationForm({ project: p }: { project: Project }) {
   return <div className="grid items-start gap-5 xl:grid-cols-2">
 <Panel title="Design your intervention" description="Adjust one or more factors, then compare with the current project." action={<Button size="sm" variant="ghost" onClick={() => { setInput(original); setResult(null); setError('') }}>
 <RotateCcw data-icon="inline-start"/>Reset</Button>}>
-<form onSubmit={async e => { e.preventDefault(); setBusy(true); setError(''); try { const next = await landSightService.simulate(p, input); setResult(next); addAudit(`Ran what-if simulation: ${next.current.score} → ${next.simulated.score}`, p.id) } catch (e) { setError(e instanceof Error ? e.message : 'Simulation failed. Please try again.') } finally { setBusy(false) } }}>
+<form onSubmit={async e => { e.preventDefault(); setBusy(true); setError(''); try { const next = await landSightService.simulate(p, input); setResult(next); addAudit(`Ran what-if simulation: ${next.current.score} → ${next.simulated.score}`, p.id, 'Success', { module: 'Impact Simulation', details: `Compensation ${input.compensationPaid}%; ${input.legalCases} open legal cases; ${input.approvalDays} approval days; ${input.acquiredParcels}/${p.totalParcels} parcels acquired. Predicted delay ${next.current.delayDays} → ${next.simulated.delayDays} days. Original project unchanged.` }) } catch (e) { const message = e instanceof Error ? e.message : 'Simulation failed. Please try again.'; setError(message); addAudit('Simulation failed', p.id, 'Failed', { module: 'Impact Simulation', details: message }) } finally { setBusy(false) } }}>
 <FieldGroup>
 <Field>
 <FieldLabel htmlFor="compensation-rate">Compensation resolved <span className="ml-auto font-semibold text-primary">{input.compensationPaid}%</span>

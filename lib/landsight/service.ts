@@ -9,6 +9,17 @@ export const DEFAULT_FILTERS: Filters = { state: '', district: '', type: '', ris
 export function filterProjects(projects: Project[], filters: Partial<Filters>) {
   return projects.filter(p => (!filters.state || p.state === filters.state) && (!filters.district || p.district === filters.district) && (!filters.type || p.type === filters.type) && (!filters.risk || p.riskLevel === filters.risk) && (!filters.status || p.status === filters.status) && (!filters.progress || (filters.progress === 'below50' ? p.progress < 50 : filters.progress === '50to80' ? p.progress >= 50 && p.progress < 80 : p.progress >= 80)) && (!filters.search || `${p.name} ${p.id} ${p.state} ${p.district} ${p.type}`.toLowerCase().includes(filters.search.trim().toLowerCase())))
 }
+export function resolveProjectSelection(projects: Project[], filters: Partial<Filters>, requestedId: string | null, rememberedId = '') {
+  const filtered = filterProjects(projects, filters)
+  const requested = projects.find(p => p.id === requestedId)
+  const outsideFilters = !!requested && !filtered.some(p => p.id === requested.id)
+  const options = outsideFilters ? [requested!, ...filtered] : filtered
+  const project = requested ?? options.find(p => p.id === rememberedId) ?? options[0]
+  const notice = requestedId && !requested
+    ? 'The linked project does not exist. Select an available project below or clear the project link.'
+    : outsideFilters ? 'This linked project is outside the current portfolio filters. The linked project is shown without changing your filters.' : ''
+  return { project, options, notice }
+}
 export const CSV_COLUMNS = ['id', 'name', 'state', 'district', 'type', 'totalParcels', 'acquiredParcels', 'compensationPaid', 'legalCases', 'approvalDays', 'complexity', 'latitude', 'longitude'] as const
 export async function validateCSV(file: File): Promise<ImportRecord> {
   if (file.size > 2 * 1024 * 1024) throw new Error('The maximum CSV file size is 2 MB.')
