@@ -11,7 +11,7 @@ from ..services.projects import DemoProjectRepository
 def get_predictor(request: Request) -> Predictor:
     predictor = request.app.state.predictor
     if predictor is None:
-        raise APIError(503, "MODEL_UNAVAILABLE", "Demo mode is disabled; no trained model is configured.")
+        raise APIError(503, "MODEL_UNAVAILABLE", "No compatible trained model is loaded and rule-based fallback is not enabled.")
     return predictor
 
 

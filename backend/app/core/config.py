@@ -1,5 +1,9 @@
 import os
+from pathlib import Path
+from typing import Literal
 from urllib.parse import urlsplit
+
+from ..models.artifacts import DEFAULT_ARTIFACT_DIRECTORY
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -13,6 +17,8 @@ class Settings(BaseModel):
     )
     demo_enabled: bool = True
     docs_enabled: bool = True
+    prediction_mode: Literal["auto", "ml", "demo", "disabled"] = "auto"
+    model_directory: Path = DEFAULT_ARTIFACT_DIRECTORY
 
     @field_validator("cors_origins")
     @classmethod

@@ -1,5 +1,8 @@
 from fastapi import APIRouter, Request
 
+from ..core.errors import APIError
+from ..schemas.performance import ModelPerformance
+
 from ..schemas.contracts import (
     ErrorResponse, HealthResponse, PredictionRequest, ProjectInformation,
     Recommendation, RiskAnalysis, RiskFactor, RiskPrediction,
@@ -23,7 +26,19 @@ health_router = APIRouter(tags=["Health"])
 @health_router.get("/health", response_model=HealthResponse)
 @router.get("/health", response_model=HealthResponse, tags=["Health"])
 def health(request: Request) -> HealthResponse:
-    return HealthResponse(prediction_mode="demo" if request.app.state.settings.demo_enabled else "unavailable")
+    state = request.app.state
+    return HealthResponse(
+        prediction_mode=state.prediction_mode, model_loaded=state.prediction_mode == "ml",
+        model_version=state.model_performance.version if state.model_performance else None,
+        notice=state.prediction_notice,
+    )
+
+
+@router.get("/model-performance", response_model=ModelPerformance, tags=["Model performance"])
+def model_performance(request: Request) -> ModelPerformance:
+    if request.app.state.model_performance is None:
+        raise APIError(503, "MODEL_UNAVAILABLE", "No measured model performance is available without a loaded trained artifact.")
+    return request.app.state.model_performance
 
 
 @router.get("/projects", response_model=list[ProjectInformation], tags=["Projects"])
@@ -59,7 +74,7 @@ def project_analysis(project: ProjectDependency, predictor: PredictorDependency)
 
 @router.get("/projects/{project_id}/explanation", response_model=list[RiskFactor], tags=["Risk analysis"])
 def explain_project(project: ProjectDependency, predictor: PredictorDependency) -> list[RiskFactor]:
-    """Demo rule contributions only, not SHAP. Full metadata is on the risk-analysis response."""
+    """Empty for ML until Phase 3; demo fallback returns rule contributions, never SHAP."""
     return predictor.predict(project).factors
 
 

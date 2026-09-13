@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
 
@@ -12,15 +14,34 @@ def create_app(settings: Settings | None = None) -> CORSMiddleware:
     settings = settings if settings is not None else Settings.from_env()
     api = FastAPI(
         title="LandSight Backend",
-        version="0.1.0",
-        description="Phase 1 API foundation. Read-only synthetic fixture and temporary rule-based predictions; no ML or database.",
+        version="0.2.0",
+        description="Phase 2 predictive ML trained only on synthetic data. Read-only fixture, measured synthetic evaluation, and explicit rule-based fallback; no database or SHAP.",
         docs_url="/docs" if settings.docs_enabled else None,
         redoc_url="/redoc" if settings.docs_enabled else None,
         openapi_url="/openapi.json" if settings.docs_enabled else None,
         debug=False,
     )
     api.state.settings = settings
-    api.state.predictor = DemoPredictor() if settings.demo_enabled else None
+    api.state.predictor = None
+    api.state.prediction_mode = "unavailable"
+    api.state.model_performance = None
+    api.state.prediction_notice = "No trained model is loaded."
+    if settings.prediction_mode in {"auto", "ml"}:
+        try:
+            from .services.ml_prediction import MLPredictor
+
+            predictor = MLPredictor(settings.model_directory)
+            api.state.predictor = predictor
+            api.state.model_performance = predictor.performance
+            api.state.prediction_mode = "ml"
+            api.state.prediction_notice = predictor.performance.notice
+        except Exception as exc:
+            logging.getLogger("landsight.backend").warning("ML artifact unavailable (%s); trained predictions are disabled.", type(exc).__name__)
+            api.state.prediction_notice = "Trained model unavailable or incompatible; no ML accuracy claims are available."
+    if api.state.predictor is None and settings.demo_enabled and settings.prediction_mode in {"auto", "demo"}:
+        api.state.predictor = DemoPredictor()
+        api.state.prediction_mode = "demo"
+        api.state.prediction_notice = "Rule-based demo fallback only; no trained prediction or measured confidence."
     api.state.project_repository = DemoProjectRepository()
     register_error_handlers(api)
 
@@ -33,7 +54,7 @@ def create_app(settings: Settings | None = None) -> CORSMiddleware:
         if request.url.scheme == "https":
             response.headers["Strict-Transport-Security"] = "max-age=63072000"
         if request.url.path.startswith("/api/"):
-            response.headers["X-LandSight-Mode"] = "demo" if settings.demo_enabled else "unavailable"
+            response.headers["X-LandSight-Mode"] = api.state.prediction_mode
         return response
 
     api.include_router(health_router)

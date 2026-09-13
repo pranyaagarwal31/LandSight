@@ -62,7 +62,7 @@ def project_information(project: ProjectInput, prediction: RiskPrediction) -> Pr
         expected_delay=prediction.delay_days,
         risk_level=prediction.level,
         risk_change=8 if prediction.score > 80 else 4 if prediction.score > 60 else -5,
-        primary_risk=max(prediction.factors, key=lambda factor: factor.contribution).name,
+        primary_risk=max(prediction.factors, key=lambda factor: factor.contribution).name if prediction.factors else "Per-project ML explanation not yet available",
         status="Delayed" if prediction.score > 80 else "At risk" if prediction.score > 60 else "On track",
         prediction=prediction,
         stages=stages,

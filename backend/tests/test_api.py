@@ -15,7 +15,7 @@ from app.services.projects import DemoProjectRepository
 
 class BackendTests(unittest.TestCase):
     def setUp(self):
-        self.app = create_app(Settings())
+        self.app = create_app(Settings(prediction_mode="demo"))
         self.client = TestClient(self.app)
         self.addCleanup(self.client.close)
         self.project = DemoProjectRepository().list_projects()[0].model_dump(by_alias=True, mode="json")
@@ -127,7 +127,7 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(self.client.get("/api/projects").headers["x-landsight-mode"], "demo")
 
     def test_disabled_demo_and_docs(self):
-        with TestClient(create_app(Settings(demo_enabled=False, docs_enabled=False))) as client:
+        with TestClient(create_app(Settings(demo_enabled=False, docs_enabled=False, prediction_mode="disabled"))) as client:
             self.assertEqual(client.get("/health").json()["predictionMode"], "unavailable")
             for route in ("/docs", "/redoc", "/openapi.json"):
                 self.assertEqual(client.get(route).status_code, 404)

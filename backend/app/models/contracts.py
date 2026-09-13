@@ -10,7 +10,7 @@ FEATURE_NAMES = (
 
 
 def feature_matrix(projects: list[ProjectInput]) -> list[list[float]]:
-    """Stable raw feature order for a future fitted scikit-learn pipeline adapter."""
+    """Legacy six-feature contract; the trained v2 adapter extends it in features.py."""
     return [
         [float(project.model_dump(by_alias=True)[name]) for name in FEATURE_NAMES]
         for project in projects

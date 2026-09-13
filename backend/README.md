@@ -1,96 +1,132 @@
-# LandSight backend — Phase 1
+# LandSight backend — Phase 2
 
-Separate Python 3.11+ / FastAPI service. The existing Next.js frontend, service adapter, demo predictions, and deployment configuration are unchanged. This backend is **not yet connected to the UI or deployed by the root Next.js configuration**. No database, authentication, model training, XGBoost, Random Forest, or SHAP is implemented.
+Separate FastAPI service with actual fitted **Random Forest and XGBoost** training pipelines. The checked-in release selects XGBoost by validation performance. **All training and evaluation data is synthetic, not real government records.** These measurements establish only simulator performance, not real-world accuracy, calibrated probabilities, or production readiness.
+
+The existing Next.js frontend, demo adapter, dashboard, navigation, GIS, analytics, role preview, audit logs, and deployment configuration are unchanged. **This backend is not connected to the UI or deployed by the root Next.js configuration.** The frontend remains independent and works without Python/ML. No SHAP, database, real-data integration, or authentication is added.
 
 ## Install and run
 
-For a local checkout (from the repository root):
+Tested on Linux x86-64 with Python 3.13 and the hash-locked dependencies in `requirements.lock`. XGBoost uses the small CPU-only `xgboost-cpu` distribution (no CUDA/GPU dependency). The pinned numerical packages and CPU wheel have their own platform/Python requirements; do not assume the Phase 1 Python 3.11 baseline still applies. From a local checkout:
 
 ```sh
 cd backend
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt
+python -m pip install --require-hashes -r requirements.lock
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-On Windows, activate with `.venv\Scripts\activate`. Open `http://127.0.0.1:8000/docs` for interactive OpenAPI documentation; `/redoc` and `/openapi.json` are also available. Port 8000 is separate from the existing frontend on port 3000. Only use `--reload` for development.
+Use `--reload` only for development. The supplied artifact is already trained; normal startup **does not train**. Visit `/docs`, `/openapi.json`, and `/health`. Port 8000 remains separate from the frontend. `requirements.txt` pins direct runtime dependencies; `requirements-dev.txt` adds test tooling; `requirements.lock` pins and hashes the complete tested runtime + test environment. There is no additional JavaScript dependency.
 
-Optional process environment variables (no secrets required):
+## Train reproducibly
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `LANDSIGHT_CORS_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Comma-separated exact frontend origins. For a hosted frontend, set its exact HTTPS origin; no wildcard, paths, or trailing slash. Empty disables cross-origin access. |
-| `LANDSIGHT_DEMO_ENABLED` | `true` | When false, prediction/project APIs return 503 rather than pretending a trained model/data source exists. Health remains available. |
-| `LANDSIGHT_DOCS_ENABLED` | `true` | Set false to disable docs and the OpenAPI endpoint. |
-
-Configuration is read at startup; restart after changes. Environment files are not automatically loaded. CORS allows GET/POST and Content-Type without cookies; it is not authentication. Do not expose sensitive project data before a later authentication/data phase.
-
-## Endpoints
-
-| Method | Path | Response |
-| --- | --- | --- |
-| GET | `/health`, `/api/health` | Liveness, prediction mode, `modelLoaded: false` |
-| GET | `/api/projects` | Array of frontend-shaped project records |
-| GET | `/api/projects/{project_id}` | One project; 404 for unknown IDs |
-| POST | `/api/predict` | `RiskPrediction` |
-| POST | `/api/risk-analysis` | `projectId`, `prediction`, `recommendations`, `isDemo` |
-| GET | `/api/projects/{project_id}/risk-analysis` | Same analysis for the fixture |
-| GET | `/api/projects/{project_id}/explanation` | `RiskFactor[]` (demo rule contributions, not SHAP) |
-| GET | `/api/projects/{project_id}/recommendations` | Frontend-shaped `Recommendation[]` plus `isDemo` |
-| POST | `/api/recommendations` | Recommendations for supplied inputs |
-
-Every POST accepts `{ "project": { ... } }`. Example:
-
-```json
-{
-  "project": {
-    "id": "LS-2026-001",
-    "name": "Eastern Freight Corridor — Patna",
-    "state": "Bihar",
-    "district": "Patna",
-    "type": "Railway",
-    "totalParcels": 1240,
-    "acquiredParcels": 310,
-    "compensationPaid": 28,
-    "legalCases": 23,
-    "approvalDays": 110,
-    "complexity": 5,
-    "latitude": 25.5941,
-    "longitude": 85.1376
-  }
-}
-```
-
-The required fields mirror `CSV_COLUMNS` in `lib/landsight/service.ts`. Optional existing context: `landowners`, `compensationBudgetCr`, `approvalsPending`, `clearanceStatus`, `expectedCompletion` (ISO date), `agency`, `pendingParcels`, `progress`. Unknown fields are rejected: a future frontend adapter must project the input fields from `Project`, not send cached predictions, stages, or display-only risk values. Parcel totals and supplied progress must agree (rounded percentages are allowed). Counts must be integers; compensation is 0–100 percent, approval days 0–180, complexity 1–5. Locations use valid latitude/longitude bounds. There is no separate dispute count or parcel geometry in the current prototype, so none is invented here; outstanding compensation does not prove litigation or disputes.
-
-## Compatibility and demo limitations
-
-- CamelCase JSON and risk levels `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` match `lib/landsight/types.ts`. Prediction keys remain `score`, `level`, `delayDays`, `confidence`, `factors`, `model`, `isDemo`; `metadata` adds model/explanation provenance.
-- **Intentional future adapter change:** `confidence` is nullable and returns `null`, not the frontend's illustrative 87. `isDemo` is a boolean so a future trained predictor can return false. No accuracy or trained date is fabricated.
-- Project GETs expose only `LS-2026-001`, copied from the first existing synthetic seed in `lib/landsight/data.ts`, not the entire 24-project portfolio. `source: "Synthetic"`, nested prediction metadata, and `X-LandSight-Mode: demo` label responses. Explanation arrays retain the frontend contract; provenance is in that header and the risk-analysis response.
-- The temporary predictor ports the existing six deterministic factors, rounding, thresholds, and delay formula from `lib/landsight/risk.ts`. It is not ML. Recommendations are illustrative rules with no validated impact claims.
-- POSTs accept new project IDs but never save anything. There are no project mutations or persistence. Dashboard, GIS, alerts, simulation, uploads, audit, and model-performance endpoints remain out of scope.
-- Errors use `{ "error": { "code", "message", "details": [] } }`: 422 for invalid inputs, 404 for missing projects/routes, 405 for unsupported methods, 503 for unavailable demo/model/data source, and sanitized 500 errors. Submitted payloads and exception internals are not echoed in error details.
-
-## Structure and Phase 2 extension point
-
-- `app/api/`: routes and injectable predictor/project dependencies.
-- `app/schemas/contracts.py`: validated requests, responses, and metadata.
-- `app/services/`: read-only demo fixture, temporary predictor, recommendations.
-- `app/models/contracts.py`: `Predictor` protocol and a versioned, ordered raw feature matrix compatible with a future scikit-learn pipeline adapter.
-- `app/core/`: startup settings and error handling.
-
-Implement a future fitted-model adapter with `predict(ProjectInput) -> RiskPrediction`, then replace the predictor dependency/app-state construction in `app/main.py`. Keep preprocessing and feature order with the model artifact; `feature_matrix` currently uses only the six prototype numeric inputs. Additional features require a versioned contract and training pipeline. Load trusted artifacts once at startup, never from caller-supplied paths. Later explanations plug into `factors` and `metadata`; do not label demo contributions as SHAP. No ML dependency is installed in Phase 1.
-
-## Validation
-
-From `backend/` with the virtual environment active:
+From `backend/` in the same environment:
 
 ```sh
-python -m pip install -r requirements-dev.txt
+python -m app.models.train --output artifacts-retrained --records 6000 --seed 20260914 --trees 160
 python -m unittest discover -s tests -v
 python -m pip check
 ```
 
-Tests cover contracts, fixture consistency, numerical boundaries, request validation, non-persistence, CORS, disabled mode, error sanitization, and feature order. `httpx` is test-only; tests otherwise use Python's standard library.
+Training writes to a **new release directory** and refuses an existing `manifest.json`. The default output is `backend/artifacts`, already populated in this repository, so use `--output` when reproducing it. Do not overwrite a release while a service is loading it. A fixed seed governs generation, splits, and both estimators; CPU workers are fixed to one. Identical code, data parameters, dependency versions, and platform reproduce predictions/evaluations. Training timestamps naturally change, and numerical/serialized identity is not guaranteed across platforms or dependency upgrades.
+
+Each release contains:
+
+| File | Purpose |
+| --- | --- |
+| `synthetic-training.csv` | All 6,000 generated snapshots and synthetic outcome labels, explicitly marked Synthetic on every row |
+| `splits.json` | Exact disjoint train/validation/test project IDs |
+| `holdout-predictions.csv` | Validation/test probabilities, predicted days, and actual synthetic labels for RF, XGBoost, and the baseline |
+| `model.joblib` | The selected fitted classifier and regressor, each including preprocessing; training ranges and feature contract |
+| `performance.json` | Computed metrics, comparisons, split information, provenance, and frontend-compatible display fields |
+| `manifest.json` | Parameters, dataset/version identifiers, runtime versions, feature order, and file SHA-256 checksums |
+
+The manifest is written last. Only the selected estimator pair is serialized; both candidates' evaluations, hyperparameters, and holdout predictions are retained, and both can be retrained. The source generator, not a downloaded dataset, is the dataset authority.
+
+### Dataset and features
+
+`app/models/dataset.py` simulates acquisition snapshots. The six existing inputs are preserved in order: `totalParcels`, `acquiredParcels`, `compensationPaid`, `legalCases`, `approvalDays`, `complexity`. The v2 schema also uses existing `landowners`, `compensationBudgetCr`, `approvalsPending`, and project `type`: **10 raw features, 15 transformed features**. No ID, project name, coordinates, geographic identity, completion date, frontend risk score, or outcome label is a model feature.
+
+The simulator draws 80–5,000 parcels, partial progress, correlated compensation progress, legal cases, 0–180 approval days, complexity 1–5, six existing project types, and optional acquisition factors. Delay outcomes are generated from nonlinear relationships and interactions among these inputs plus heteroscedastic noise and occasional random disruptions. Those relationships are **documented simulator assumptions in the generator, not learned real-world facts**. There is no historical follow-up or observation date. The future-delay target is entirely invented. A random 12% of each optional numerical factor is withheld after outcome generation to exercise missing-input handling.
+
+Fitted scikit-learn pipelines impute numerical inputs with **training-only medians** and one-hot encode the fixed six project types. Trees do not require numerical scaling. Optional nulls are returned as null in `featureValues`, while `transformedFeatureValues` shows the actual imputed/encoded values used by the model. Out-of-training-range numerical values are accepted under the existing API schema but explicitly warned about; those estimates should not be trusted for decisions. This range check is not a comprehensive distribution-shift detector.
+
+### Targets, model selection, and evaluation
+
+- **Classification:** whether simulated delay is strictly greater than 90 days. RandomForestClassifier and XGBClassifier learn this binary target.
+- **Regression:** simulated delay days, learned separately by RandomForestRegressor and XGBRegressor. Served estimates and regression evaluations use nonnegative, nearest-integer days.
+- Stratified fixed-seed **60/20/20 split**: 3,600 training, 1,200 validation, 1,200 test rows. No preprocessing is fitted on validation/test rows. A future real dataset will need temporal/grouped splitting rather than assuming independent synthetic projects.
+- Fixed hyperparameters are recorded in the manifest. Select the model family with the lowest **validation log loss plus validation MAE divided by 90**; algorithm name breaks ties. Selection is frozen before test evaluation. The selected model is not refitted on holdout rows.
+- A prior-probability classifier and mean-delay regressor provide measured baselines. The baseline is reported, not eligible for selection; there is no production acceptance gate.
+- Accuracy, precision, recall, F1, and the binary confusion matrix use probability threshold **0.5**. ROC-AUC uses continuous probabilities across thresholds. Brier score and log loss measure probability quality; MAE, RMSE, and R² evaluate days. Raw metric values are retained, not fabricated or derived from the UI's illustrative metrics.
+- Model probabilities are **uncalibrated**. No calibrated confidence or prediction interval is claimed. `confidence` remains null; `probability.value` is a 0–1 model estimate for the synthetic event, with `calibrated: false` and an explicit caveat.
+- `score` is the rounded probability multiplied by 100. Existing `level` bands remain `LOW` (0–30), `MEDIUM` (31–60), `HIGH` (61–80), `CRITICAL` (81–100). `riskCategory` additionally supplies title case. These are presentation bands, **not a four-class classifier**, and the binary metrics' 0.5 threshold is not the HIGH category boundary. This changes the backend score meaning from additive demo points to synthetic event probability.
+- The independent classifier and regressor need not agree exactly near the 90-day threshold. A mean delay is not a probability.
+- `featureImportance` contains selected classifier global normalized tree impurity/gain importance. It can be biased and is **not a local explanation, causal effect, or SHAP**. Local `factors` is empty in ML mode until Phase 3.
+
+The checked-in `performance.json` is the source of measured values, not hard-coded response constants. It includes results for both candidate families and the baseline. Retraining recomputes everything.
+
+## Loading and fallback behavior
+
+`MLPredictor` in `app/services/ml_prediction.py` implements the existing `Predictor.predict(ProjectInput) -> RiskPrediction` protocol. Each app instance loads its local artifact once during creation; requests never train, accept file paths, download models, or mutate model files. The fitted preprocessing remains attached to each estimator and is ready for later explanation work.
+
+The default `create_app()` uses `Settings(prediction_mode="auto", model_directory=backend/artifacts)`. It verifies the feature schema/order, artifact format, exact numerical dependency versions and Python major/minor, model/report versions, serving-file checksums, fitted pipelines, and binary class labels. A different Python/runtime requires retraining and a compatible release. The dataset and diagnostic CSVs are not needed at inference; their hashes remain available for offline auditing.
+
+**Joblib is a pickle-based format and can execute code. Load only trusted operator-generated releases.** Checksums detect corruption, not malicious artifacts or an attacker who can rewrite the manifest. There is no model upload endpoint. Keep the entire release directory out of untrusted write access. Serve only this prototype's non-sensitive inputs until authentication is introduced.
+
+Configure other modes programmatically without new credentials or environment variables:
+
+```python
+from pathlib import Path
+from app.core.config import Settings
+from app.main import create_app
+
+app = create_app(Settings(prediction_mode="ml", model_directory=Path("/absolute/path/to/artifacts-retrained")))
+```
+
+| Mode | Behavior |
+| --- | --- |
+| `auto` (default) | Load ML; on missing/corrupt/incompatible artifact or unavailable ML dependency, use explicit rule fallback when `demo_enabled` is true |
+| `ml` | Require the trained artifact; prediction/metrics return structured 503 when unavailable, never silently return demo predictions |
+| `demo` | Explicit legacy rule predictor, provided `demo_enabled` is true |
+| `disabled` | No predictor; structured 503 |
+
+`GET /health` remains a liveness endpoint and reports actual `predictionMode`, `modelLoaded`, `modelVersion`, and a notice; it is not an ML readiness guarantee. `X-LandSight-Mode` matches the actual predictor. In `auto` fallback, metadata says demo, confidence remains null, and model performance returns 503 rather than inventing measurements. Frontend fallback is separately untouched.
+
+Existing optional environment variables are unchanged:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `LANDSIGHT_CORS_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Exact comma-separated frontend origins; no wildcards, paths, or trailing slash. Empty disables cross-origin access. |
+| `LANDSIGHT_DEMO_ENABLED` | `true` | Enables the read-only synthetic project repository and permits rule fallback. False **does not disable a successfully loaded ML model**. |
+| `LANDSIGHT_DOCS_ENABLED` | `true` | Enables docs/OpenAPI |
+
+Configuration is read at startup; environment files are not automatically loaded. CORS is not authentication.
+
+## API and frontend compatibility
+
+| Method | Path | Response |
+| --- | --- | --- |
+| GET | `/health`, `/api/health` | Actual prediction mode/model loading status |
+| GET | `/api/model-performance` | Measured `ModelPerformance`, or structured 503 when no trained model is loaded |
+| GET | `/api/projects`, `/api/projects/{project_id}` | Existing read-only synthetic fixture with active model predictions |
+| POST | `/api/predict` | `RiskPrediction` with model provenance, probability information, and feature values |
+| POST | `/api/risk-analysis` | Prediction and existing illustrative recommendations |
+| GET | `/api/projects/{project_id}/risk-analysis` | Analysis for the synthetic fixture |
+| GET | `/api/projects/{project_id}/explanation` | Empty in ML mode; rule contributions in demo mode, never SHAP |
+| GET | `/api/projects/{project_id}/recommendations` | Existing illustrative recommendations |
+| POST | `/api/recommendations` | Existing illustrative recommendations for supplied inputs |
+
+Every POST retains `{ "project": { ...existing ProjectInput fields... } }`. CamelCase request/response keys and required fields are unchanged. Unknown fields are rejected; counts, ranges, parcel/progress consistency, and valid dates/coordinates are still validated. Requests accept new project IDs but do not persist records.
+
+`RiskPrediction` retains `score`, `level`, `delayDays`, `confidence`, `factors`, `model`, `isDemo`, and `metadata`; it adds `riskCategory`, `probability`, `featureValues`, `transformedFeatureValues`, and `warnings`. Trained synthetic predictions deliberately return **`metadata.status: "trained"` and `isDemo: true`**: the estimator is actually fitted, but training evidence is synthetic. `metadata.algorithm`, `version`, `trainedAt`, and `featureSchemaVersion` identify the model. `explanationMethod` states that SHAP is not implemented.
+
+`/api/model-performance` reuses the existing frontend `ModelPerformance` top-level shape (`version`, `lastTrained`, `trainingRecords`, `features`, `metrics`, `confusionMatrix`, `featureImportance`, `isDemo`) and adds typed raw evaluations, dataset provenance, split counts, selection criteria, and limitations. The frontend still shows its old **illustrative** metrics through its existing service adapter. A later integration must switch that adapter, allow nullable confidence, handle empty factors, and update explanatory UI copy: its current importance-chart wording describes demo rule contributions, not trained-model importance. No UI has been silently relabeled or connected in this phase.
+
+Project stages and recommendations remain rule-based demo aids, not learned predictions or validated intervention effects. `primaryRisk` explicitly says an ML explanation is unavailable instead of inventing a per-project attribution. Source remains Synthetic. Existing structured 422/404/405/503 and sanitized 500 errors, CORS, and security headers are preserved.
+
+## Validation coverage
+
+Backend tests exercise artifact loading and checksums, schema/runtime rejection before deserialization, valid and invalid API inputs, response contracts, risk band boundaries and score rounding, deterministic data/training/inference, data-split isolation, training-only imputation, input sensitivity, exact recomputation of metrics from saved holdout predictions, optional/OOD inputs, existing related routes without SHAP, and graceful fallback. They also retain all Phase 1 demo/API regression tests. The checked-in artifact is explicitly tested. Frontend regression tests and TypeScript checks are run separately without editing frontend code.
+
+The generated CSVs, serialized artifact, and evaluation reports are deliberately checked in for this small synthetic prototype. A later production data/model registry phase should replace this release mechanism; no database or storage integration is needed for this explicitly requested generated fixture.

@@ -72,6 +72,13 @@ class ModelMetadata(APIModel):
     notice: str = "Temporary demonstration only. No trained ML model, calibrated confidence, or SHAP explanation."
 
 
+class ProbabilityEstimate(APIModel):
+    event: str = "Synthetic delay exceeds 90 days"
+    value: Annotated[float, Field(ge=0, le=1)]
+    calibrated: Literal[False] = False
+    notice: str = "Uncalibrated model estimate for a synthetic event; not confidence in correctness or a real-world probability."
+
+
 class RiskPrediction(APIModel):
     score: Annotated[int, Field(ge=0, le=100)]
     level: RiskLevel
@@ -81,6 +88,11 @@ class RiskPrediction(APIModel):
     model: str
     is_demo: bool
     metadata: ModelMetadata
+    risk_category: Literal["Low", "Medium", "High", "Critical"] | None = None
+    probability: ProbabilityEstimate | None = None
+    feature_values: dict[str, float | str | None] = Field(default_factory=dict)
+    transformed_feature_values: dict[str, float] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
 
 
 class ProjectStage(APIModel):
@@ -137,9 +149,11 @@ class RiskAnalysis(APIModel):
 class HealthResponse(APIModel):
     status: Literal["ok"] = "ok"
     service: str = "LandSight backend"
-    version: str = "0.1.0"
-    prediction_mode: Literal["demo", "unavailable"]
+    version: str = "0.2.0"
+    prediction_mode: Literal["ml", "demo", "unavailable"]
     model_loaded: bool = False
+    model_version: str | None = None
+    notice: str | None = None
 
 
 class ErrorDetail(APIModel):

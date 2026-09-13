@@ -1,0 +1,304 @@
+{
+  "version": "LS-SYNTHETIC-2.0-0175a32b8524",
+  "lastTrained": "2026-09-13T21:28:18.998948+00:00",
+  "trainingRecords": 3600,
+  "features": 10,
+  "metrics": [
+    {
+      "name": "Accuracy",
+      "value": "0.8725",
+      "description": "Measured on held-out synthetic binary delay labels at probability threshold 0.5; not real-world accuracy."
+    },
+    {
+      "name": "Precision",
+      "value": "0.8932",
+      "description": "Measured on held-out synthetic binary delay labels at probability threshold 0.5; not real-world accuracy."
+    },
+    {
+      "name": "Recall",
+      "value": "0.9189",
+      "description": "Measured on held-out synthetic binary delay labels at probability threshold 0.5; not real-world accuracy."
+    },
+    {
+      "name": "F1 Score",
+      "value": "0.9058",
+      "description": "Measured on held-out synthetic binary delay labels at probability threshold 0.5; not real-world accuracy."
+    },
+    {
+      "name": "ROC-AUC",
+      "value": "0.9398",
+      "description": "Measured on held-out synthetic binary delay labels at probability threshold 0.5; not real-world accuracy."
+    },
+    {
+      "name": "Delay MAE",
+      "value": "13.46 days",
+      "description": "Held-out synthetic mean absolute delay error."
+    },
+    {
+      "name": "Delay RMSE",
+      "value": "17.78 days",
+      "description": "Held-out synthetic root mean squared delay error."
+    },
+    {
+      "name": "Delay R²",
+      "value": "0.7766",
+      "description": "Held-out synthetic regression coefficient of determination."
+    },
+    {
+      "name": "Brier score",
+      "value": "0.0920",
+      "description": "Synthetic probability squared error; lower is better. Not a calibration guarantee."
+    },
+    {
+      "name": "Log loss",
+      "value": "0.2945",
+      "description": "Synthetic binary probability log loss; lower is better."
+    }
+  ],
+  "confusionMatrix": {
+    "truePositive": 736,
+    "falsePositive": 88,
+    "trueNegative": 311,
+    "falseNegative": 65
+  },
+  "featureImportance": [
+    {
+      "name": "totalParcels",
+      "importance": 4.452891826629639
+    },
+    {
+      "name": "acquiredParcels",
+      "importance": 3.6372158527374268
+    },
+    {
+      "name": "compensationPaid",
+      "importance": 12.27303695678711
+    },
+    {
+      "name": "legalCases",
+      "importance": 31.064990997314453
+    },
+    {
+      "name": "approvalDays",
+      "importance": 11.676803588867188
+    },
+    {
+      "name": "complexity",
+      "importance": 4.161097049713135
+    },
+    {
+      "name": "landowners",
+      "importance": 2.909940004348755
+    },
+    {
+      "name": "compensationBudgetCr",
+      "importance": 2.8015425205230713
+    },
+    {
+      "name": "approvalsPending",
+      "importance": 5.280263423919678
+    },
+    {
+      "name": "type_Highway",
+      "importance": 6.022494792938232
+    },
+    {
+      "name": "type_Railway",
+      "importance": 2.814971923828125
+    },
+    {
+      "name": "type_Irrigation",
+      "importance": 3.537200450897217
+    },
+    {
+      "name": "type_Power",
+      "importance": 1.8000516891479492
+    },
+    {
+      "name": "type_Industrial",
+      "importance": 2.355252504348755
+    },
+    {
+      "name": "type_Road infrastructure",
+      "importance": 5.212244033813477
+    }
+  ],
+  "isDemo": true,
+  "source": "Synthetic",
+  "algorithm": "XGBoost",
+  "featureSchemaVersion": "landsight-acquisition-v2",
+  "transformedFeatures": 15,
+  "featureImportanceMethod": "Classifier global tree impurity/gain importance (%), not per-project explanation or SHAP; may be biased.",
+  "notice": "Prototype trained and evaluated exclusively on generated synthetic data, not government records. Metrics measure this simulator only and do not establish real-world accuracy or deployment readiness.",
+  "target": "Classification: simulated delay >90 days. Regression: simulated delay days. Score = rounded probability × 100; category cutoffs 30/60/80 are presentation bands, not four trained classes.",
+  "split": {
+    "seed": 20260914,
+    "train": 3600,
+    "validation": 1200,
+    "test": 1200,
+    "strategy": "60/20/20 stratified random split on the binary target; preprocessing fitted on training only."
+  },
+  "datasetVersion": "landsight-synthetic-v2",
+  "datasetSha256": "7ef5e67e50b85da85b7461b572b2481460adf8ddedb47f233e524b2f69117383",
+  "selectionRule": "Lowest validation log loss + validation delay MAE / 90; tie broken by algorithm name. Baseline excluded; test never selects the model.",
+  "evaluations": [
+    {
+      "algorithm": "Random Forest",
+      "validation": {
+        "records": 1200,
+        "classification": {
+          "accuracy": 0.8533333333333334,
+          "precision": 0.8663540445486518,
+          "recall": 0.9225967540574282,
+          "f1": 0.8935912938331319,
+          "rocAuc": 0.9227782314713124,
+          "brierScore": 0.10754232577542301,
+          "logLoss": 0.3433396192481318,
+          "threshold": 0.5,
+          "confusionMatrix": {
+            "truePositive": 739,
+            "falsePositive": 114,
+            "trueNegative": 285,
+            "falseNegative": 62
+          }
+        },
+        "regression": {
+          "mae": 14.576666666666666,
+          "rmse": 18.62086643168536,
+          "r2": 0.7484737219228632
+        }
+      },
+      "test": {
+        "records": 1200,
+        "classification": {
+          "accuracy": 0.8641666666666666,
+          "precision": 0.8752941176470588,
+          "recall": 0.9288389513108615,
+          "f1": 0.9012719563900666,
+          "rocAuc": 0.9397807877997115,
+          "brierScore": 0.0978085910751309,
+          "logLoss": 0.3197985650761269,
+          "threshold": 0.5,
+          "confusionMatrix": {
+            "truePositive": 744,
+            "falsePositive": 106,
+            "trueNegative": 293,
+            "falseNegative": 57
+          }
+        },
+        "regression": {
+          "mae": 14.491666666666667,
+          "rmse": 18.880898636805753,
+          "r2": 0.7480157485533168
+        }
+      },
+      "validationSelectionLoss": 0.5053025822110947
+    },
+    {
+      "algorithm": "XGBoost",
+      "validation": {
+        "records": 1200,
+        "classification": {
+          "accuracy": 0.8475,
+          "precision": 0.8777506112469438,
+          "recall": 0.8963795255930087,
+          "f1": 0.8869672637430512,
+          "rocAuc": 0.9270648531440961,
+          "brierScore": 0.10360856226223064,
+          "logLoss": 0.3218028767684109,
+          "threshold": 0.5,
+          "confusionMatrix": {
+            "truePositive": 718,
+            "falsePositive": 100,
+            "trueNegative": 299,
+            "falseNegative": 83
+          }
+        },
+        "regression": {
+          "mae": 13.804166666666667,
+          "rmse": 17.59003032023159,
+          "r2": 0.7755514672192677
+        }
+      },
+      "test": {
+        "records": 1200,
+        "classification": {
+          "accuracy": 0.8725,
+          "precision": 0.8932038834951457,
+          "recall": 0.9188514357053683,
+          "f1": 0.9058461538461539,
+          "rocAuc": 0.9398496240601504,
+          "brierScore": 0.0920445031329483,
+          "logLoss": 0.2945300964704728,
+          "threshold": 0.5,
+          "confusionMatrix": {
+            "truePositive": 736,
+            "falsePositive": 88,
+            "trueNegative": 311,
+            "falseNegative": 65
+          }
+        },
+        "regression": {
+          "mae": 13.464166666666667,
+          "rmse": 17.779037281772787,
+          "r2": 0.7765684188613098
+        }
+      },
+      "validationSelectionLoss": 0.47518250639804055
+    }
+  ],
+  "baseline": {
+    "algorithm": "Baseline",
+    "validation": {
+      "records": 1200,
+      "classification": {
+        "accuracy": 0.6675,
+        "precision": 0.6675,
+        "recall": 1.0,
+        "f1": 0.800599700149925,
+        "rocAuc": 0.5,
+        "brierScore": 0.22194382716049385,
+        "logLoss": 0.6359351563696566,
+        "threshold": 0.5,
+        "confusionMatrix": {
+          "truePositive": 801,
+          "falsePositive": 399,
+          "trueNegative": 0,
+          "falseNegative": 0
+        }
+      },
+      "regression": {
+        "mae": 30.2875,
+        "rmse": 37.128728768973495,
+        "r2": -8.644974047733456e-6
+      }
+    },
+    "test": {
+      "records": 1200,
+      "classification": {
+        "accuracy": 0.6675,
+        "precision": 0.6675,
+        "recall": 1.0,
+        "f1": 0.800599700149925,
+        "rocAuc": 0.5,
+        "brierScore": 0.22194382716049385,
+        "logLoss": 0.6359351563696566,
+        "threshold": 0.5,
+        "confusionMatrix": {
+          "truePositive": 801,
+          "falsePositive": 399,
+          "trueNegative": 0,
+          "falseNegative": 0
+        }
+      },
+      "regression": {
+        "mae": 30.368333333333332,
+        "rmse": 37.62273248981259,
+        "r2": -0.0005268477095647928
+      }
+    },
+    "validationSelectionLoss": 0.9724629341474345
+  },
+  "evaluationScope": "synthetic-held-out-test",
+  "probabilityNotice": "Class probabilities are uncalibrated. Brier score and log loss are reported, not a guarantee of calibration."
+}
