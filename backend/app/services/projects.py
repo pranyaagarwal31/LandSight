@@ -54,6 +54,10 @@ def project_information(project: ProjectInput, prediction: RiskPrediction) -> Pr
         )
         for name, completion, delay in rows
     ]
+    primary_risk = max(prediction.factors, key=lambda factor: factor.contribution).name if prediction.factors else "Per-project ML explanation unavailable"
+    if prediction.explanation is not None:
+        explanation = prediction.explanation
+        primary_risk = (explanation.top_risk_factors[0].name if explanation.top_risk_factors else "No risk-increasing factors relative to the model baseline") if explanation.status == "available" else "Per-project ML explanation unavailable"
     values = project.model_dump()
     values.update(
         pending_parcels=project.total_parcels - project.acquired_parcels,
@@ -62,7 +66,7 @@ def project_information(project: ProjectInput, prediction: RiskPrediction) -> Pr
         expected_delay=prediction.delay_days,
         risk_level=prediction.level,
         risk_change=8 if prediction.score > 80 else 4 if prediction.score > 60 else -5,
-        primary_risk=max(prediction.factors, key=lambda factor: factor.contribution).name if prediction.factors else "Per-project ML explanation not yet available",
+        primary_risk=primary_risk,
         status="Delayed" if prediction.score > 80 else "At risk" if prediction.score > 60 else "On track",
         prediction=prediction,
         stages=stages,

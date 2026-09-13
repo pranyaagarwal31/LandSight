@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Request
 
 from ..core.errors import APIError
@@ -5,7 +7,7 @@ from ..schemas.performance import ModelPerformance
 
 from ..schemas.contracts import (
     ErrorResponse, HealthResponse, PredictionRequest, ProjectInformation,
-    Recommendation, RiskAnalysis, RiskFactor, RiskPrediction,
+    Recommendation, RiskAnalysis, RiskFactor, RiskPrediction, ShapExplanation,
 )
 from ..services.projects import project_information
 from ..services.recommendations import recommendations_for
@@ -72,10 +74,15 @@ def project_analysis(project: ProjectDependency, predictor: PredictorDependency)
     return analyze(PredictionRequest(project=project), predictor)
 
 
-@router.get("/projects/{project_id}/explanation", response_model=list[RiskFactor], tags=["Risk analysis"])
-def explain_project(project: ProjectDependency, predictor: PredictorDependency) -> list[RiskFactor]:
-    """Empty for ML until Phase 3; demo fallback returns rule contributions, never SHAP."""
-    return predictor.predict(project).factors
+@router.get("/projects/{project_id}/explanation", response_model=list[RiskFactor] | ShapExplanation, tags=["Risk analysis"])
+def explain_project(project: ProjectDependency, predictor: PredictorDependency, format: Literal["factors", "shap"] = "factors") -> list[RiskFactor] | ShapExplanation:
+    """Default preserves the factor list. format=shap returns verified units, values, provenance and availability."""
+    prediction = predictor.predict(project)
+    if format == "shap":
+        if prediction.explanation is None:
+            raise APIError(503, "SHAP_UNAVAILABLE", "SHAP is unavailable in demo mode. Rule contributions are not SHAP.")
+        return prediction.explanation
+    return prediction.factors
 
 
 @router.get("/projects/{project_id}/recommendations", response_model=list[Recommendation], tags=["Recommendations"])

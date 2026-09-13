@@ -66,7 +66,9 @@ class MLTests(unittest.TestCase):
         self.assertTrue(prediction.is_demo)
         self.assertIsNone(prediction.confidence)
         self.assertFalse(prediction.probability.calibrated)
-        self.assertEqual(prediction.factors, [])
+        self.assertEqual(len(prediction.factors), len(ML_FEATURE_NAMES))
+        self.assertEqual(prediction.explanation.status, "available")
+        self.assertEqual(prediction.metadata.explanation_method, "tree-shap")
         self.assertEqual(prediction.score, int(np.floor(prediction.probability.value * 100 + 0.5)))
         self.assertEqual(prediction.level, risk_level(prediction.score))
         self.assertEqual(prediction.risk_category, prediction.level.title())
@@ -201,15 +203,15 @@ class MLTests(unittest.TestCase):
         for name, checksum in manifest["files"].items():
             self.assertEqual(hashlib.sha256((self.directory / name).read_bytes()).hexdigest(), checksum)
 
-    def test_related_routes_work_without_shap(self):
+    def test_related_routes_include_shap(self):
         client = self.client()
         for route in ("/api/projects", "/api/projects/LS-2026-001", "/api/projects/LS-2026-001/risk-analysis", "/api/projects/LS-2026-001/recommendations"):
             response = client.get(route)
             self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(client.get("/api/projects/LS-2026-001/explanation").json(), [])
         project = client.get("/api/projects/LS-2026-001").json()
+        self.assertEqual(client.get("/api/projects/LS-2026-001/explanation").json(), project["prediction"]["factors"])
         self.assertEqual(project["prediction"]["metadata"]["status"], "trained")
-        self.assertIn("not yet available", project["primaryRisk"])
+        self.assertEqual(project["primaryRisk"], project["prediction"]["explanation"]["topRiskFactors"][0]["name"])
 
     def test_trained_model_does_not_require_demo_repository(self):
         client = self.client(demo_enabled=False)

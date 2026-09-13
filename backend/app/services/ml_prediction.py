@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 from pathlib import Path
 
 import joblib
@@ -11,7 +12,8 @@ from ..models.artifacts import ARTIFACT_FORMAT_VERSION, runtime_versions
 from ..models.dataset import SYNTHETIC_NOTICE
 from ..models.evaluation import predictions
 from ..models.features import ML_FEATURE_NAMES, ML_FEATURE_SCHEMA_VERSION, ml_feature_matrix, raw_feature_values, transformed_feature_names
-from ..schemas.contracts import ModelMetadata, ProbabilityEstimate, ProjectInput, RiskPrediction
+from ..schemas.contracts import ModelMetadata, ProbabilityEstimate, ProjectInput, RiskFactor, RiskPrediction, ShapExplanation
+from .explanation import ShapExplainer
 from ..schemas.performance import ModelPerformance
 from .prediction import risk_level
 
@@ -50,6 +52,11 @@ class MLPredictor:
             raise ValueError("Classifier and regressor preprocessing disagree")
         self.performance = report
         self.training_ranges = bundle["trainingRanges"]
+        self.explainer = None
+        try:
+            self.explainer = ShapExplainer(self.classifier, report.version, report.algorithm)
+        except Exception:
+            logging.getLogger("landsight.backend").warning("SHAP explainer unavailable; retaining trained predictions", exc_info=True)
 
     def predict(self, project: ProjectInput) -> RiskPrediction:
         matrix = ml_feature_matrix([project])
@@ -67,14 +74,28 @@ class MLPredictor:
                 warnings.append(f"{name} was missing and replaced by the training-set median.")
             elif not lower <= float(value) <= upper:
                 warnings.append(f"{name} is outside the synthetic training range [{lower:g}, {upper:g}]; this estimate is out of distribution.")
-        transformed = self.classifier.named_steps["preprocessing"].transform(matrix)[0]
+        transformed_matrix = self.classifier.named_steps["preprocessing"].transform(matrix)
+        transformed = transformed_matrix[0]
+        explanation = ShapExplanation(
+            status="unavailable", model_version=self.performance.version, algorithm=self.performance.algorithm,
+            feature_schema_version=ML_FEATURE_SCHEMA_VERSION,
+            unavailable_reason="SHAP could not be calculated or verified. No feature attributions are available; the trained prediction is retained.",
+        )
+        if self.explainer is not None:
+            try:
+                explanation = self.explainer.explain(project, raw_values, transformed_matrix, probability)
+            except Exception:
+                logging.getLogger("landsight.backend").warning("SHAP calculation unavailable; retaining trained prediction", exc_info=True)
+        if explanation.status == "unavailable":
+            warnings.append(explanation.unavailable_reason)
+        factors = [RiskFactor(id=f.id, name=f.name, contribution=f.contribution, description=f.description) for f in explanation.contributions]
         return RiskPrediction(
             score=score, level=level, risk_category=level.title(), delay_days=delay,
-            confidence=None, probability=ProbabilityEstimate(value=probability), factors=[],
+            confidence=None, probability=ProbabilityEstimate(value=probability), factors=factors, explanation=explanation,
             model=self.performance.version, is_demo=True,
             metadata=ModelMetadata(
                 version=self.performance.version, status="trained", algorithm=self.performance.algorithm,
-                explanation_method="not-implemented-no-shap", feature_schema_version=ML_FEATURE_SCHEMA_VERSION,
+                explanation_method="tree-shap" if explanation.status == "available" else "shap-unavailable", feature_schema_version=ML_FEATURE_SCHEMA_VERSION,
                 trained_at=self.performance.last_trained, notice=SYNTHETIC_NOTICE,
             ),
             feature_values=raw_values,
