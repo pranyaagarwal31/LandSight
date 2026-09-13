@@ -1,6 +1,7 @@
 from typing import Literal
 
 from fastapi import APIRouter, Request
+from starlette.concurrency import run_in_threadpool
 
 from ..core.errors import APIError
 from ..schemas.performance import ModelPerformance
@@ -33,6 +34,8 @@ def health(request: Request) -> HealthResponse:
         prediction_mode=state.prediction_mode, model_loaded=state.prediction_mode == "ml",
         model_version=state.model_performance.version if state.model_performance else None,
         notice=state.prediction_notice,
+        storage_mode=state.storage_mode,
+        storage_notice="Persisted synthetic project data (PostgreSQL/PostGIS)." if state.storage_mode == "postgres" else "Development demo: in-memory synthetic data, not persisted." if state.storage_mode == "demo-memory" else "Database unavailable; persisted data is not replaced with demo data.",
     )
 
 
@@ -43,14 +46,20 @@ def model_performance(request: Request) -> ModelPerformance:
     return request.app.state.model_performance
 
 
+@router.get("/gis/projects", response_model=list[ProjectInformation], tags=["Projects"])
 @router.get("/projects", response_model=list[ProjectInformation], tags=["Projects"])
-def list_projects(repository: RepositoryDependency, predictor: PredictorDependency) -> list[ProjectInformation]:
-    return [project_information(project, predictor.predict(project)) for project in repository.list_projects()]
+async def list_projects(repository: RepositoryDependency, predictor: PredictorDependency) -> list[ProjectInformation]:
+    projects = await repository.list_projects()
+    predictions = await run_in_threadpool(lambda: [(project, predictor.predict(project)) for project in projects])
+    await repository.save_predictions(predictions)
+    return [project_information(project, prediction) for project, prediction in predictions]
 
 
 @router.get("/projects/{project_id}", response_model=ProjectInformation, tags=["Projects"])
-def read_project(project: ProjectDependency, predictor: PredictorDependency) -> ProjectInformation:
-    return project_information(project, predictor.predict(project))
+async def read_project(project: ProjectDependency, predictor: PredictorDependency, repository: RepositoryDependency) -> ProjectInformation:
+    prediction = await run_in_threadpool(predictor.predict, project)
+    await repository.save_predictions([(project, prediction)])
+    return project_information(project, prediction)
 
 
 @router.post("/predict", response_model=RiskPrediction, tags=["Predictions"])
@@ -70,14 +79,17 @@ def analyze(payload: PredictionRequest, predictor: PredictorDependency) -> RiskA
 
 
 @router.get("/projects/{project_id}/risk-analysis", response_model=RiskAnalysis, tags=["Risk analysis"])
-def project_analysis(project: ProjectDependency, predictor: PredictorDependency) -> RiskAnalysis:
-    return analyze(PredictionRequest(project=project), predictor)
+async def project_analysis(project: ProjectDependency, predictor: PredictorDependency, repository: RepositoryDependency) -> RiskAnalysis:
+    result = await run_in_threadpool(analyze, PredictionRequest(project=project), predictor)
+    await repository.save_predictions([(project, result.prediction)])
+    return result
 
 
 @router.get("/projects/{project_id}/explanation", response_model=list[RiskFactor] | ShapExplanation, tags=["Risk analysis"])
-def explain_project(project: ProjectDependency, predictor: PredictorDependency, format: Literal["factors", "shap"] = "factors") -> list[RiskFactor] | ShapExplanation:
+async def explain_project(project: ProjectDependency, predictor: PredictorDependency, repository: RepositoryDependency, format: Literal["factors", "shap"] = "factors") -> list[RiskFactor] | ShapExplanation:
     """Default preserves the factor list. format=shap returns verified units, values, provenance and availability."""
-    prediction = predictor.predict(project)
+    prediction = await run_in_threadpool(predictor.predict, project)
+    await repository.save_predictions([(project, prediction)])
     if format == "shap":
         if prediction.explanation is None:
             raise APIError(503, "SHAP_UNAVAILABLE", "SHAP is unavailable in demo mode. Rule contributions are not SHAP.")
@@ -86,8 +98,10 @@ def explain_project(project: ProjectDependency, predictor: PredictorDependency, 
 
 
 @router.get("/projects/{project_id}/recommendations", response_model=list[Recommendation], tags=["Recommendations"])
-def project_recommendations(project: ProjectDependency, predictor: PredictorDependency) -> list[Recommendation]:
-    return recommendations_for(project, predictor.predict(project))
+async def project_recommendations(project: ProjectDependency, predictor: PredictorDependency, repository: RepositoryDependency) -> list[Recommendation]:
+    prediction = await run_in_threadpool(predictor.predict, project)
+    await repository.save_predictions([(project, prediction)])
+    return recommendations_for(project, prediction)
 
 
 @router.post("/recommendations", response_model=list[Recommendation], tags=["Recommendations"])

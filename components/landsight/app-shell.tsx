@@ -68,7 +68,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { filters, setFilters, resetFilters, user } = useWorkspace()
-  const { data: projects = [] } = useProjects()
+  const { data: projects = [], storageNotice, error: projectError } = useProjects()
   const { data: alerts = [] } = useAlerts()
   const [search, setSearch] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -133,8 +133,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 <FlaskConical className="size-3" />
 <span className="font-medium tracking-[.035em]">{DEMO_NOTICE}</span>
 </div>
-<span className="hidden items-center gap-1.5 sm:flex">
-<span className="dot bg-medium" />Prototype environment</span>
+<span className="flex items-center gap-1.5" role="status">
+<span className="dot bg-medium" />{projectError ? 'Project data unavailable — no demo substitution' : storageNotice ?? 'Loading project storage…'}</span>
 </div>
 <main id="main-content" className="mx-auto min-h-[calc(100vh-155px)] max-w-[1640px] p-4 sm:p-6 xl:p-7">{children}</main>
 <footer className="flex flex-wrap items-center justify-between gap-2 px-7 pb-5 text-[9px] text-muted-foreground">

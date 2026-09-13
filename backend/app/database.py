@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import hashlib
 import os
+import ssl
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -27,9 +28,12 @@ def connection_url(url: str) -> str:
 
 
 async def create_pool(url: str) -> asyncpg.Pool:
+    remote = urlsplit(url).hostname not in {"localhost", "127.0.0.1", "::1"}
+    # Use the system CA store instead of requiring libpq's ~/.postgresql/root.crt.
+    tls = {"ssl": ssl.create_default_context()} if remote else {}
     return await asyncpg.create_pool(
         dsn=connection_url(url), min_size=1, max_size=5,
-        timeout=10, command_timeout=20,
+        timeout=10, command_timeout=20, **tls,
     )
 
 

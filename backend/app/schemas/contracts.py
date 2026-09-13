@@ -202,6 +202,8 @@ class RiskAnalysis(APIModel):
 
 
 class HealthResponse(APIModel):
+    storage_mode: Literal["postgres", "demo-memory", "unavailable"] = "demo-memory"
+    storage_notice: str | None = None
     status: Literal["ok"] = "ok"
     service: str = "LandSight backend"
     version: str = "0.2.0"

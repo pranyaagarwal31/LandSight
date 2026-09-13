@@ -42,7 +42,7 @@ def synthetic_projects() -> list[ProjectInput]:
         total, complexity, days = values["total_parcels"], values["complexity"], values["approval_days"]
         values.update(
             id=f"LS-2026-{index + 1:03d}",
-            landowners=js_round(total * (1 + complexity * .12)), compensation_budget_cr=js_round(total * .38),
+            landowners=int(js_round(total * (1 + complexity * .12))), compensation_budget_cr=js_round(total * .38),
             approvals_pending=3 if days > 80 else 2 if days > 30 else 1 if days > 0 else 0,
             clearance_status="Clearances delayed" if days > 60 else "Under review",
             expected_completion="2026-12-31" if index < 8 else "2027-03-31" if index < 16 else "2027-06-30",
