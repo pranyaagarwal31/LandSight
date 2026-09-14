@@ -7,15 +7,26 @@ from .api.routes import health_router, router
 from .core.config import Settings
 from .core.errors import register_error_handlers
 from .services.prediction import DemoPredictor
-from .services.projects import DemoProjectRepository
+from contextlib import asynccontextmanager
+from .services.database import Database
 
 
 def create_app(settings: Settings | None = None) -> CORSMiddleware:
     settings = settings if settings is not None else Settings.from_env()
+    database = Database(settings.database_url.get_secret_value() if settings.database_url else None)
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        try:
+            yield
+        finally:
+            await database.close()
+
     api = FastAPI(
+        lifespan=lifespan,
         title="LandSight Backend",
-        version="0.2.0",
-        description="Phase 2 predictive ML trained only on synthetic data. Read-only fixture, measured synthetic evaluation, and explicit rule-based fallback; no database or SHAP.",
+        version="0.5.0",
+        description="Persisted synthetic PostgreSQL/PostGIS projects, trained XGBoost predictions, verified TreeSHAP, and explicit demo fallback.",
         docs_url="/docs" if settings.docs_enabled else None,
         redoc_url="/redoc" if settings.docs_enabled else None,
         openapi_url="/openapi.json" if settings.docs_enabled else None,
@@ -42,7 +53,7 @@ def create_app(settings: Settings | None = None) -> CORSMiddleware:
         api.state.predictor = DemoPredictor()
         api.state.prediction_mode = "demo"
         api.state.prediction_notice = "Rule-based demo fallback only; no trained prediction or measured confidence."
-    api.state.project_repository = DemoProjectRepository()
+    api.state.database = database
     register_error_handlers(api)
 
     @api.middleware("http")
@@ -66,7 +77,7 @@ def create_app(settings: Settings | None = None) -> CORSMiddleware:
         allow_credentials=False,
         allow_methods=["GET", "POST"],
         allow_headers=["Content-Type"],
-        expose_headers=["X-LandSight-Mode"],
+        expose_headers=["X-LandSight-Mode", "X-LandSight-Data-Source", "X-LandSight-Predictions-Persisted"],
     )
 
 

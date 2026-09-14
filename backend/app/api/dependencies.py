@@ -5,7 +5,7 @@ from fastapi import Depends, Path, Request
 from ..core.errors import APIError
 from ..models.contracts import Predictor
 from ..schemas.contracts import ProjectInput
-from ..services.projects import DemoProjectRepository
+from ..services.database import ProjectRepository
 
 
 def get_predictor(request: Request) -> Predictor:
@@ -15,23 +15,21 @@ def get_predictor(request: Request) -> Predictor:
     return predictor
 
 
-def get_project_repository(request: Request) -> DemoProjectRepository:
-    if not request.app.state.settings.demo_enabled:
-        raise APIError(503, "PROJECT_SOURCE_UNAVAILABLE", "Demo data is disabled; no project data source is configured.")
-    return request.app.state.project_repository
+def get_project_repository(request: Request) -> ProjectRepository:
+    return ProjectRepository(request.app.state.database, request.app.state.settings.demo_enabled)
 
 
 PredictorDependency = Annotated[Predictor, Depends(get_predictor)]
-RepositoryDependency = Annotated[DemoProjectRepository, Depends(get_project_repository)]
+RepositoryDependency = Annotated[ProjectRepository, Depends(get_project_repository)]
 
 
-def get_project(
+async def get_project(
     project_id: Annotated[str, Path(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")],
     repository: RepositoryDependency,
 ) -> ProjectInput:
-    project = repository.get_project(project_id)
+    project = await repository.get_project(project_id)
     if project is None:
-        raise APIError(404, "PROJECT_NOT_FOUND", "Project not found in the read-only demo fixture.")
+        raise APIError(404, "PROJECT_NOT_FOUND", "Project not found in the current project source.")
     return project
 
 

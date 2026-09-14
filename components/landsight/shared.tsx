@@ -34,7 +34,7 @@ export function ErrorState({ reset, message }: { reset?: () => void; message?: s
 export function DataBoundary({ children }: { children: (projects: Project[]) => React.ReactNode }) {
   const { data, error, isLoading, mutate } = useProjects()
   if (isLoading) return <LoadingState />
-  if (error) return <ErrorState reset={() => void mutate()} />
+  if (error) return <ErrorState message={error instanceof Error ? error.message : undefined} reset={() => void mutate()} />
   if (!data?.length) return <EmptyState title="No project records" description="The project data source has no records available." />
   return children(data)
 }

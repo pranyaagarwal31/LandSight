@@ -2,6 +2,7 @@ import { ALERTS, MODEL_PERFORMANCE, PROJECTS, recommendationsFor } from './data'
 import { predictRisk, simulateRisk, summarize } from './risk'
 import { fetchMLPrediction, MLAPIError, predictionInput } from './ml'
 import { fetchModelPerformance } from './performance'
+import { fetchProject, fetchProjectCollection } from './projects'
 import type { Filters, ImportRecord, LandSightService, Project } from './types'
 
 export const API_CONTRACT = {
@@ -56,20 +57,20 @@ export async function validateCSV(file: File): Promise<ImportRecord> {
 }
 
 export const landSightService: LandSightService = {
-  getProjects: async () => PROJECTS,
-  getProject: async id => PROJECTS.find(p => p.id === id),
+  getProjects: async () => (await fetchProjectCollection()).projects,
+  getProject: fetchProject,
   getDashboard: async projects => summarize(projects),
   predict: async project => {
     try { return await fetchMLPrediction(predictionInput(project)) }
     catch (error) { return { ...predictRisk(project), fallbackReason: error instanceof MLAPIError ? error.message : 'Prediction error. The ML result could not be loaded.' } }
   },
   getExplanation: async id => {
-    const project = PROJECTS.find(p => p.id === id)
+    const project = await landSightService.getProject(id)
     return project ? (await landSightService.predict(project)).factors : []
   },
-  getRecommendations: async id => PROJECTS.filter(p => !id || p.id === id).flatMap(recommendationsFor),
+  getRecommendations: async id => (await landSightService.getProjects()).filter(p => !id || p.id === id).flatMap(recommendationsFor),
   simulate: async (project, input) => simulateRisk(project, input),
-  getGISProjects: async () => PROJECTS,
+  getGISProjects: async () => landSightService.getProjects(),
   getAlerts: async () => ALERTS.map(a => ({ ...a })),
   validateUpload: validateCSV,
   getModelPerformance: async () => {

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import useSWR, { SWRConfig } from 'swr'
 import { AUDIT_LOGS, ROLE_PERMISSIONS, ROLE_PROFILES } from '@/lib/landsight/data'
 import { DEFAULT_FILTERS, landSightService } from '@/lib/landsight/service'
+import { fetchProjectCollection } from '@/lib/landsight/projects'
 import type { Alert, AuditContext, AuditLog, Filters, ImportRecord, Role, User } from '@/lib/landsight/types'
 import { Toaster } from '@/components/ui/sonner'
 
@@ -55,7 +56,13 @@ export function Providers({ children }: { children: ReactNode }) {
   return <SWRConfig value={{ revalidateOnFocus: false, shouldRetryOnError: false }}><WorkspaceProvider>{children}</WorkspaceProvider></SWRConfig>
 }
 export function useWorkspace() { const value = useContext(Context); if (!value) throw new Error('Workspace provider is missing'); return value }
-export const useProjects = () => useSWR('demo:projects', () => landSightService.getProjects())
+export function useProjects() {
+  const result = useSWR('api:projects', fetchProjectCollection, {
+    revalidateOnFocus: true, revalidateOnReconnect: true,
+    refreshInterval: data => data?.source === 'demo-fallback' ? 30_000 : 0,
+  })
+  return { ...result, data: result.data?.projects, source: result.data?.source, notice: result.data?.notice, predictionsPersisted: result.data?.predictionsPersisted }
+}
 export const useAlerts = () => useSWR<Alert[]>('demo:alerts', () => landSightService.getAlerts(), { revalidateIfStale: false, revalidateOnReconnect: false })
 export const useAudit = () => useSWR<AuditLog[]>('session:audit', null, { fallbackData: AUDIT_LOGS })
 export const useImports = () => useSWR<ImportRecord[]>('session:imports', null, { fallbackData: [] })

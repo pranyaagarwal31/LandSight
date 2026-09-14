@@ -1,33 +1,35 @@
 from ..schemas.contracts import ProjectInformation, ProjectInput, ProjectStage, RiskPrediction
 from .prediction import js_round, risk_level
 
-# Only the first existing frontend seed is exposed; this is not a project database.
-_DEMO_PROJECT = {
-    "id": "LS-2026-001",
-    "name": "Eastern Freight Corridor — Patna",
-    "state": "Bihar",
-    "district": "Patna",
-    "type": "Railway",
-    "totalParcels": 1240,
-    "acquiredParcels": 310,
-    "compensationPaid": 28,
-    "legalCases": 23,
-    "approvalDays": 110,
-    "complexity": 5,
-    "latitude": 25.5941,
-    "longitude": 85.1376,
-    "landowners": 1984,
-    "compensationBudgetCr": 471,
-    "approvalsPending": 3,
-    "clearanceStatus": "Clearances delayed",
-    "expectedCompletion": "2026-12-31",
-    "agency": "Bihar Project Coordination Unit (demo)",
-}
+import json
+from pathlib import Path
+
+SEED_PATH = Path(__file__).resolve().parents[2] / "data" / "projects.json"
+
+
+def bundled_projects() -> list[ProjectInput]:
+    seeds = json.loads(SEED_PATH.read_text())["seeds"]
+    projects = []
+    for index, row in enumerate(seeds):
+        name, state, district, kind, total, acquired, paid, cases, days, complexity, latitude, longitude = row
+        projects.append(ProjectInput(
+            id=f"LS-2026-{index + 1:03d}", name=name, state=state, district=district, type=kind,
+            total_parcels=total, acquired_parcels=acquired, compensation_paid=paid,
+            legal_cases=cases, approval_days=days, complexity=complexity,
+            latitude=latitude, longitude=longitude,
+            landowners=js_round(total * (1 + complexity * 0.12)),
+            compensation_budget_cr=js_round(total * 0.38),
+            approvals_pending=3 if days > 80 else 2 if days > 30 else 1 if days > 0 else 0,
+            clearance_status="Clearances delayed" if days > 60 else "Under review",
+            expected_completion="2026-12-31" if index < 8 else "2027-03-31" if index < 16 else "2027-06-30",
+            agency=f"{state} Project Coordination Unit (demo)",
+        ))
+    return projects
 
 
 class DemoProjectRepository:
     def list_projects(self) -> list[ProjectInput]:
-        return [ProjectInput.model_validate(_DEMO_PROJECT)]
+        return bundled_projects()
 
     def get_project(self, project_id: str) -> ProjectInput | None:
         return next((p for p in self.list_projects() if p.id == project_id), None)

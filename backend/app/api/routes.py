@@ -1,6 +1,7 @@
 from typing import Literal
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
+from starlette.concurrency import run_in_threadpool
 
 from ..core.errors import APIError
 from ..schemas.performance import ModelPerformance
@@ -44,13 +45,22 @@ def model_performance(request: Request) -> ModelPerformance:
 
 
 @router.get("/projects", response_model=list[ProjectInformation], tags=["Projects"])
-def list_projects(repository: RepositoryDependency, predictor: PredictorDependency) -> list[ProjectInformation]:
-    return [project_information(project, predictor.predict(project)) for project in repository.list_projects()]
+async def list_projects(repository: RepositoryDependency, predictor: PredictorDependency, response: Response) -> list[ProjectInformation]:
+    projects = await repository.list_projects()
+    pairs = await run_in_threadpool(lambda: [(project, predictor.predict(project)) for project in projects])
+    persisted = await repository.save_predictions(pairs)
+    response.headers["X-LandSight-Data-Source"] = repository.data_source
+    response.headers["X-LandSight-Predictions-Persisted"] = str(persisted).lower()
+    return [project_information(project, prediction) for project, prediction in pairs]
 
 
 @router.get("/projects/{project_id}", response_model=ProjectInformation, tags=["Projects"])
-def read_project(project: ProjectDependency, predictor: PredictorDependency) -> ProjectInformation:
-    return project_information(project, predictor.predict(project))
+async def read_project(project: ProjectDependency, repository: RepositoryDependency, predictor: PredictorDependency, response: Response) -> ProjectInformation:
+    prediction = await run_in_threadpool(predictor.predict, project)
+    persisted = await repository.save_predictions([(project, prediction)])
+    response.headers["X-LandSight-Data-Source"] = repository.data_source
+    response.headers["X-LandSight-Predictions-Persisted"] = str(persisted).lower()
+    return project_information(project, prediction)
 
 
 @router.post("/predict", response_model=RiskPrediction, tags=["Predictions"])

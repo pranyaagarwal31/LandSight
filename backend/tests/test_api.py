@@ -38,7 +38,9 @@ class BackendTests(unittest.TestCase):
         response = self.client.get("/api/projects")
         self.assertEqual(response.status_code, 200)
         projects = response.json()
-        self.assertEqual(len(projects), 1)
+        self.assertEqual(len(projects), 24)
+        self.assertEqual(response.headers["x-landsight-data-source"], "demo-fallback")
+        self.assertEqual(response.headers["x-landsight-predictions-persisted"], "false")
         project = projects[0]
         self.assertEqual(project["id"], "LS-2026-001")
         self.assertEqual(project["pendingParcels"], 930)
@@ -49,7 +51,7 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(len(project["stages"]), 7)
         self.assertEqual(self.client.get("/api/projects/LS-2026-001").json(), project)
         self.assertEqual(self.client.post("/api/projects", json=self.project).status_code, 405)
-        self.assertEqual(self.client.get("/api/projects/LS-2026-002").json()["error"]["code"], "PROJECT_NOT_FOUND")
+        self.assertEqual(self.client.get("/api/projects/LS-2026-999").json()["error"]["code"], "PROJECT_NOT_FOUND")
 
     def test_prediction_analysis_explanation_and_recommendations_agree(self):
         payload = {"project": self.project}
