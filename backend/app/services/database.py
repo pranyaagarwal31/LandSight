@@ -11,7 +11,13 @@ from ..schemas.contracts import ProjectInput, RiskPrediction
 from .projects import DemoProjectRepository
 
 logger = logging.getLogger("landsight.backend")
-DATABASE_ERRORS = (asyncpg.PostgresError, asyncpg.InterfaceError, OSError, TimeoutError, ValueError)
+
+
+class DatabaseUnavailableError(RuntimeError):
+    pass
+
+
+DATABASE_ERRORS = (asyncpg.PostgresError, asyncpg.InterfaceError, OSError, TimeoutError, DatabaseUnavailableError)
 DATABASE_NOTICE = "PostgreSQL / PostGIS — persisted synthetic data, not government records."
 FALLBACK_NOTICE = "Demo fallback — PostgreSQL is unavailable or unconfigured. Showing the bundled synthetic dataset."
 
@@ -39,12 +45,12 @@ class Database:
 
     async def pool(self) -> asyncpg.Pool:
         if not self._url:
-            raise ValueError("Database not configured")
+            raise DatabaseUnavailableError("Database not configured")
         async with self._lock:
             if self._pool is None:
                 parts = urlsplit(self._url)
                 if parts.scheme not in {"postgres", "postgresql"}:
-                    raise ValueError("Invalid database URL")
+                    raise DatabaseUnavailableError("Invalid database URL")
                 # asyncpg supports sslmode, but not libpq's channel_binding query option.
                 query = urlencode([(k, v) for k, v in parse_qsl(parts.query) if k != "channel_binding"])
                 dsn = urlunsplit(parts._replace(query=query))

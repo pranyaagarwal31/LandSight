@@ -17,7 +17,7 @@ def bundled_projects() -> list[ProjectInput]:
             total_parcels=total, acquired_parcels=acquired, compensation_paid=paid,
             legal_cases=cases, approval_days=days, complexity=complexity,
             latitude=latitude, longitude=longitude,
-            landowners=js_round(total * (1 + complexity * 0.12)),
+            landowners=int(js_round(total * (1 + complexity * 0.12))),
             compensation_budget_cr=js_round(total * 0.38),
             approvals_pending=3 if days > 80 else 2 if days > 30 else 1 if days > 0 else 0,
             clearance_status="Clearances delayed" if days > 60 else "Under review",
