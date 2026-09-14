@@ -11,7 +11,9 @@ from ..schemas.contracts import (
 )
 from ..services.projects import project_information
 from ..services.recommendations import recommendations_for
-from .dependencies import PredictorDependency, ProjectDependency, RepositoryDependency
+from .dependencies import (
+    PersistedProjectDependency, PersistedProjectsDependency, PredictorDependency, ProjectDependency,
+)
 
 router = APIRouter(
     prefix="/api",
@@ -44,12 +46,12 @@ def model_performance(request: Request) -> ModelPerformance:
 
 
 @router.get("/projects", response_model=list[ProjectInformation], tags=["Projects"])
-def list_projects(repository: RepositoryDependency, predictor: PredictorDependency) -> list[ProjectInformation]:
-    return [project_information(project, predictor.predict(project)) for project in repository.list_projects()]
+def list_projects(projects: PersistedProjectsDependency, predictor: PredictorDependency) -> list[ProjectInformation]:
+    return [project_information(project, predictor.predict(project)) for project in projects]
 
 
 @router.get("/projects/{project_id}", response_model=ProjectInformation, tags=["Projects"])
-def read_project(project: ProjectDependency, predictor: PredictorDependency) -> ProjectInformation:
+def read_project(project: PersistedProjectDependency, predictor: PredictorDependency) -> ProjectInformation:
     return project_information(project, predictor.predict(project))
 
 

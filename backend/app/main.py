@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
@@ -6,22 +7,33 @@ from starlette.middleware.cors import CORSMiddleware
 from .api.routes import health_router, router
 from .core.config import Settings
 from .core.errors import register_error_handlers
+from .services.database import Database
 from .services.prediction import DemoPredictor
 from .services.projects import DemoProjectRepository
 
 
 def create_app(settings: Settings | None = None) -> CORSMiddleware:
     settings = settings if settings is not None else Settings.from_env()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        try:
+            yield
+        finally:
+            await app.state.database.close()
+
     api = FastAPI(
         title="LandSight Backend",
         version="0.2.0",
-        description="Phase 2 predictive ML trained only on synthetic data. Read-only fixture, measured synthetic evaluation, and explicit rule-based fallback; no database or SHAP.",
+        description="Predictive ML trained only on synthetic data. Read-only PostgreSQL project APIs with demo fallback, measured synthetic evaluation, and model explanations.",
+        lifespan=lifespan,
         docs_url="/docs" if settings.docs_enabled else None,
         redoc_url="/redoc" if settings.docs_enabled else None,
         openapi_url="/openapi.json" if settings.docs_enabled else None,
         debug=False,
     )
     api.state.settings = settings
+    api.state.database = Database(settings.database_url.get_secret_value() if settings.database_url else None)
     api.state.predictor = None
     api.state.prediction_mode = "unavailable"
     api.state.model_performance = None
