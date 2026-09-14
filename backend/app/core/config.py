@@ -5,7 +5,7 @@ from urllib.parse import urlsplit
 
 from ..models.artifacts import DEFAULT_ARTIFACT_DIRECTORY
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, SecretStr, field_validator
 
 
 class Settings(BaseModel):
@@ -15,6 +15,7 @@ class Settings(BaseModel):
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     )
+    database_url: SecretStr | None = None
     demo_enabled: bool = True
     docs_enabled: bool = True
     prediction_mode: Literal["auto", "ml", "demo", "disabled"] = "auto"
@@ -42,6 +43,8 @@ class Settings(BaseModel):
     @classmethod
     def from_env(cls) -> "Settings":
         values: dict[str, object] = {}
+        if os.environ.get("DATABASE_URL"):
+            values["database_url"] = os.environ["DATABASE_URL"]
         if "LANDSIGHT_CORS_ORIGINS" in os.environ:
             values["cors_origins"] = tuple(
                 origin.strip()
