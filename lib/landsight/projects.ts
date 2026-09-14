@@ -38,7 +38,7 @@ export function validateProject(value: unknown): Project {
   const prediction = p.prediction
   if (!prediction || prediction.score !== p.riskScore || prediction.level !== p.riskLevel
     || prediction.delayDays !== p.expectedDelay || prediction.isDemo !== true || !Array.isArray(prediction.factors)
-    || typeof prediction.model !== 'string' || !['trained', 'demo'].includes(prediction.metadata?.status ?? '')) return invalid()
+    || typeof prediction.model !== 'string' || (prediction.metadata?.status !== undefined && !['trained', 'demo'].includes(prediction.metadata.status))) return invalid()
   if (prediction.metadata?.status === 'trained') validateMLPrediction(prediction)
   if (!prediction.factors.every(f => f && typeof f.id === 'string' && typeof f.name === 'string'
     && typeof f.description === 'string' && Number.isFinite(f.contribution))) return invalid()
