@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import asyncpg
+from pydantic import ValidationError
 
 from ..core.errors import APIError
 from ..schemas.contracts import ProjectInput, RiskPrediction
@@ -117,6 +118,9 @@ class ProjectRepository:
             projects = await self.postgres.list_projects(project_id)
             self.data_source, self.data_notice = "postgresql", DATABASE_NOTICE
             return projects
+        except ValidationError:
+            # ValidationError is a ValueError, but invalid persisted data is not an outage.
+            raise
         except DATABASE_ERRORS as exc:
             logger.warning("Project database unavailable (%s).", type(exc).__name__)
             if not self.demo_enabled:

@@ -150,6 +150,20 @@ class ProjectDatabaseAPITests(unittest.TestCase):
         self.assertEqual(response.json()["error"]["code"], "INTERNAL_ERROR")
         self.assertNotIn("private", response.text)
 
+    def test_invalid_database_rows_do_not_trigger_demo_fallback(self):
+        self.rows[0]["legal_cases"] = -1
+        for path in ("/api/projects", f"/api/projects/{self.demo.id}"):
+            with self.subTest(path=path):
+                with patch.object(DemoProjectRepository, "list_projects") as fallback:
+                    with self.assertLogs("landsight.backend", level="ERROR"):
+                        with TestClient(self.app, raise_server_exceptions=False) as client:
+                            response = client.get(path)
+                    fallback.assert_not_called()
+                self.assertEqual(response.status_code, 500)
+                self.assertEqual(response.json()["error"]["code"], "INTERNAL_ERROR")
+                self.assertNotIn("legal_cases", response.text)
+        self.connection.executemany.assert_not_awaited()
+
     def test_repository_provenance_is_request_scoped(self):
         request = SimpleNamespace(app=self.app.app)
         first = get_persisted_project_repository(request)
@@ -222,7 +236,7 @@ class LiveProjectDatabaseTests(unittest.TestCase):
                 await database.close()
 
         projects = asyncio.run(read_database())
-        self.assertTrue(projects, "Existing PostgreSQL seed data is missing; this test never migrates or seeds")
+        self.assertEqual(len(projects), 24, "Expected the existing 24 persisted synthetic projects; this test never migrates or seeds")
         app = create_app(settings)
         with TestClient(app) as client:
             self.assertIsNotNone(app.app.state.predictor, "A compatible existing predictor is required")
