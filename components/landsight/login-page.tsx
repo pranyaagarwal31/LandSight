@@ -60,7 +60,7 @@ export function LoginPage() {
 </Field>)}</FieldSet>
 <Button type="submit" size="lg">Enter demonstration<ArrowRight data-icon="inline-end"/>
 </Button>
-<FieldDescription>Role choices change dashboard priorities and demo action permissions. Only Admin can validate CSVs, resolve alerts, or export audit logs. All roles can browse every demo route, review recommendations, acknowledge alerts, export project reports, and run simulations. Filters reset on entry; no data-access security is enforced.</FieldDescription>
+<FieldDescription>Role choices change dashboard priorities and demo action permissions. Only Admin can validate CSVs, resolve alerts, or export audit logs. All roles can browse every demo route, review recommendations, acknowledge alerts, export project reports, and run simulations. Filters and project selection reset on entry. Officers default to a demo region; managers receive a deterministic demo portfolio. No data-access security is enforced.</FieldDescription>
 </FieldGroup>
 </form>
 <Alert className="mt-7">

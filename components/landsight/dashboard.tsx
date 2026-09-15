@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, ArrowUpRight, CircleAlert, CircleDollarSign, Clock3, Download, FolderKanban, Gavel, Layers3, MapPinned, ScanLine, Sparkles, Target, TrendingUp } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, CircleAlert, Clock3, Download, FolderKanban, Layers3, MapPinned, ScanLine, Sparkles, Target, TrendingUp } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useWorkspace } from './provider'
@@ -17,18 +17,23 @@ import { exportProjects, number } from '@/lib/landsight/format'
 import { toast } from 'sonner'
 import type { Project } from '@/lib/landsight/types'
 
-export function Dashboard() { return <DataBoundary>{projects => <DashboardContent allProjects={projects}/>}</DataBoundary> }
+import { OfficerDashboard } from './officer-dashboard'
+import { ManagerDashboard } from './manager-dashboard'
+
+export function Dashboard() {
+  const { user } = useWorkspace()
+  return <DataBoundary>{projects => user.role === 'State/District Officer'
+    ? <OfficerDashboard key={user.role} allProjects={projects}/>
+    : user.role === 'Project Manager'
+      ? <ManagerDashboard key={user.role} allProjects={projects}/>
+      : <DashboardContent key={user.role} allProjects={projects}/>}</DataBoundary>
+}
 function DashboardContent({ allProjects }: { allProjects: Project[] }) {
   const { filters, addAudit, user, permissions } = useWorkspace()
   const profile = ROLE_PROFILES[user.role]
-  const isOfficer = user.role === 'State/District Officer'
-  const isManager = user.role === 'Project Manager'
   const projects = filterProjects(allProjects, filters)
   const stats = summarize(projects)
-  const legalCases = projects.reduce((sum, p) => sum + p.legalCases, 0)
-  const approvalsPending = projects.reduce((sum, p) => sum + p.approvalsPending, 0)
-  const compensationPending = projects.length ? Math.round(projects.reduce((sum, p) => sum + 100 - p.compensationPaid, 0) / projects.length) : 0
-  const attention = projects.filter(p => isOfficer ? p.legalCases > 10 || p.approvalDays > 60 : isManager ? p.progress < 60 || p.riskScore > 60 : p.riskScore > 60)
+  const attention = projects.filter(p => p.riskScore > 60)
   const highRisk = [...projects].filter(p => p.riskScore > 60).sort((a, b) => b.riskScore - a.riskScore)
   const factors = projects[0]?.prediction.factors.map(f => ({ name: f.name, count: projects.filter(p => p.primaryRisk === f.name).length })).filter(f => f.count).sort((a, b) => b.count - a.count) ?? []
   return <div className="page-stack">
@@ -44,15 +49,9 @@ function DashboardContent({ allProjects }: { allProjects: Project[] }) {
 <KpiCard title="High / critical risk" value={stats.highRisk} detail={`${stats.critical} require urgent review`} icon={CircleAlert} accent="critical"/>
 <KpiCard title="Avg. acquisition progress" value={<>{stats.progress}<span className="text-lg">%</span>
 </>} detail="Average across projects" icon={TrendingUp}/>
-{isOfficer ? <>
-<KpiCard title="Unresolved legal cases" value={number(legalCases)} detail="District legal review priority" icon={Gavel} accent="high"/>
-<KpiCard title="Avg. compensation pending" value={`${compensationPending}%`} detail="Unweighted project average" icon={CircleDollarSign} accent="medium"/>
-<KpiCard title="Districts represented" value={new Set(projects.map(p => `${p.state}/${p.district}`)).size} detail="Use filters for regional review" icon={MapPinned}/>
-</> : <>
 <KpiCard title="Pending land parcels" value={number(stats.pending)} detail="Awaiting acquisition" icon={Layers3} accent="medium"/>
-{isManager ? <KpiCard title="Pending clearances" value={approvalsPending} detail="Coordinate with nodal officers" icon={CircleAlert} accent="high"/> : <KpiCard title="Projects at risk" value={<>{stats.atRiskPercent}<span className="text-lg">%</span></>} detail="Share with risk above 60" icon={Target} accent="high"/>}
+<KpiCard title="Projects at risk" value={<>{stats.atRiskPercent}<span className="text-lg">%</span></>} detail="Share with risk above 60" icon={Target} accent="high"/>
 <KpiCard title="Avg. predicted delay" value={<>{stats.averageDelay}<span className="ml-1 text-base font-medium text-muted-foreground">days</span></>} detail="Demonstration prediction" icon={Clock3} accent="medium"/>
-</>}
 </section>
 <div className="flex flex-wrap items-center gap-4 rounded-lg border border-primary/15 bg-secondary/55 px-4 py-3.5">
 <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary/10 bg-card text-primary">
@@ -87,12 +86,12 @@ function DashboardContent({ allProjects }: { allProjects: Project[] }) {
 <RiskDistribution projects={projects}/>
 </Panel>
 </div>
-<Panel title={isOfficer ? 'Regional bottlenecks requiring review' : isManager ? 'Delivery priorities requiring attention' : 'Projects requiring attention'} description={isOfficer ? 'More than 10 open legal cases or over 60 approval days; ordered by risk score' : isManager ? 'Below 60% acquisition or above 60 risk; ordered by delay risk score' : 'High and critical-risk projects, prioritized by delay risk score'} action={<ViewLink href="/projects">View all projects</ViewLink>} flush>
+<Panel title="Projects requiring attention" description="High and critical-risk projects, prioritized by delay risk score" action={<ViewLink href="/projects">View all projects</ViewLink>} flush>
 <ProjectTable projects={attention} pageSize={5}/>
 </Panel>
 <div className="grid gap-5 xl:grid-cols-3">
-<Panel title={isOfficer ? 'Projects by district' : 'Projects by state'} description={`Top ${isOfficer ? 'districts' : 'states'} by number of active projects`}>
-<StateChart projects={projects} groupBy={isOfficer ? 'district' : 'state'}/>
+<Panel title="Projects by state" description="Top states by number of active projects">
+<StateChart projects={projects} groupBy="state"/>
 </Panel>
 <Panel title="Predicted delay trend" description="Average expected delay · Apr–Sep 2026">
 <DelayTrend projects={projects}/>
@@ -117,8 +116,8 @@ function DashboardContent({ allProjects }: { allProjects: Project[] }) {
 <Panel title="Acquisition progress" description="Acquired vs. pending land by project type">
 <ProgressChart projects={projects}/>
 </Panel>
-<Panel title="Risk by project type" description="Average demonstration score on a 0–100 scale">
-<StateChart projects={projects} groupBy="type" metric="risk"/>
+<Panel title="State-wise risk comparison" description="Average demonstration score by state on a 0–100 scale">
+<StateChart projects={projects} groupBy="state" metric="risk"/>
 </Panel>
 </div>
 </>}</div>

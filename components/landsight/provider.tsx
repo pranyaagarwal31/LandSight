@@ -28,10 +28,16 @@ const moduleNames: Record<string, string> = {
 const Context = createContext<WorkspaceContext | null>(null)
 function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [filters, updateFilters] = useState<Filters>(DEFAULT_FILTERS)
-  const [role, setRole] = useState<Role>('Admin')
+  const [role, updateRole] = useState<Role>('Admin')
   const pathname = usePathname()
-  const { data: selectedProjectId = '', mutate: mutateSelection } = useSWR<string>('session:project', null, { fallbackData: '' })
-  const setSelectedProject = useCallback((id: string) => { void mutateSelection(id, { revalidate: false }) }, [mutateSelection])
+  const { data: selection, mutate: mutateSelection } = useSWR<{ role: Role; id: string }>('session:project', null)
+  const selectedProjectId = selection?.role === role ? selection.id : ''
+  const setSelectedProject = useCallback((id: string) => { void mutateSelection({ role, id }, { revalidate: false }) }, [mutateSelection, role])
+  const setRole = (nextRole: Role) => {
+    updateFilters(DEFAULT_FILTERS)
+    void mutateSelection({ role: nextRole, id: '' }, { revalidate: false })
+    updateRole(nextRole)
+  }
   const { mutate } = useSWR<AuditLog[]>('session:audit', null, { fallbackData: AUDIT_LOGS })
   const user: User = { id: 'demo-viewer', name: ROLE_PROFILES[role].name, role, mode: 'role-preview' }
   const addAudit: WorkspaceContext['addAudit'] = (action, project = 'Workspace', result = 'Success', context = {}) => {

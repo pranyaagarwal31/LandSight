@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet'
 import { DEMO_NOTICE } from '@/lib/landsight/data'
+import { demoRegion } from '@/lib/landsight/dashboard-scope'
 import { useAlerts, useProjects, useWorkspace } from './provider'
 
 const groups = [
@@ -113,8 +114,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 </form>
 <div className="hidden items-center gap-1.5 border-l pl-4 md:flex">
 <Globe2 className="size-3.5 text-muted-foreground"/>
-<select aria-label="Global state filter" className="max-w-36 bg-transparent text-[11px] outline-none" value={filters.state} onChange={e => setFilters({ state: e.target.value, district: '' })}>
-<option value="">All India</option>{states.map(s => <option key={s}>{s}</option>)}</select>
+<select aria-label="Global state filter" className="max-w-36 bg-transparent text-[11px] outline-none" value={filters.state || (pathname === '/' && user.role === 'State/District Officer' ? demoRegion(projects) : '')} onChange={e => setFilters({ state: e.target.value, district: '' })}>
+<option value="">{pathname === '/' && user.role === 'State/District Officer' ? 'Default demo region' : 'All India'}</option>{states.map(s => <option key={s}>{s}</option>)}</select>
 </div>
 <Link href="/alerts" aria-label={`${alerts.filter(a => a.status === 'Open').length} open notifications`} className="relative border-l pl-4 text-muted-foreground">
 <Bell className="size-4" />{alerts.some(a => a.status === 'Open') && <span className="absolute -top-1 -right-0.5 size-1.5 rounded-full bg-critical ring-2 ring-card" />}</Link>
